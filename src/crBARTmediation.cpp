@@ -292,7 +292,7 @@ RcppExport SEXP crBARTmediation(SEXP _in,      // number of observations in trai
     printf("*****Number of Cut Points (matX): %d ... %d\n", matXnc[0], matXnc[pm-1]);
     printf("*****Number of Cut Points (matM): %d ... %d\n", matMnc[0], matMnc[py-1]);
     printf("*****burn,numdraw,thin: %zu,%zu,%zu\n",burn,numdraw,thin);
-    cout << "*****Prior:beta,alpha,Mtau,nu,MlambdaM,offset: " 
+    cout << "*****Prior:beta,alpha,Mtau,nu,Mlambda,Moffset: " 
          << mybeta << ',' << alpha << ',' << Mtau << ',' 
          << nu << ',' << Mlambda << ',' << MOffset << endl;
     cout << "*****Prior:beta,alpha,Ytau,nu,Ylambda,Yoffset: " 
@@ -365,10 +365,6 @@ RcppExport SEXP crBARTmediation(SEXP _in,      // number of observations in trai
         mBM.startdart();
         yBM.startdart();
       }
-      for(size_t i=0;i<n;i++) {
-        Mz[i]=iM[i]-MOffset-uM[u_index[i]]; 
-        Yz[i]=iY[i]-YOffset-uY[u_index[i]]; 
-      }
       mBM.draw(iMsigest,gen);
       yBM.draw(iYsigest,gen);
       
@@ -409,6 +405,8 @@ RcppExport SEXP crBARTmediation(SEXP _in,      // number of observations in trai
         n_j=n_j_vec[j];
         mu_uM_j=0.;
         mu_uY_j=0.;
+        mu2_uM_j=0.;
+        mu2_uY_j=0.;
         mu_uMY_j=0.;
         sd_uM_j=pow(tau_uM+n_j*precM, -0.5);
         sd_uY_j=pow(tau_uY+n_j*precY, -0.5);
@@ -423,15 +421,19 @@ RcppExport SEXP crBARTmediation(SEXP _in,      // number of observations in trai
         mu_uM_j *= precM*pow(sd_uM_j, 2.);
         mu_uY_j *= precY*pow(sd_uY_j, 2.);
         uM[j]=gen.normal()*sd_uM_j+mu_uM_j;
-        uY[j]=gen.normal()*sd_uY_j+(mu_uY_j + (mu_uMY_j/mu2_uM_j)*(uM[j]-mu_uM_j));
+        // uY[j]=gen.normal()*sd_uY_j+mu_uY_j;
+        uY[j]=gen.normal()*sd_uY_j*(1-pow(mu_uMY_j, 2.)/(mu2_uM_j*mu2_uY_j))+
+          (mu_uY_j + (mu_uMY_j/mu2_uM_j)*(uM[j]-mu_uM_j));
       }
       
       //--------------------------------------------------
       if(postrep>=burn) {
         if(nkeeptrain && (((postrep-burn+1) % skiptr) ==0)) {
           for(size_t i=0;i<n;i++) {
-            MDRAW(trcnt,i)=MOffset+mBM.f(i);
-            YDRAW(trcnt,i)=YOffset+yBM.f(i);
+            // MDRAW(trcnt,i)=MOffset+mBM.f(i);
+            // YDRAW(trcnt,i)=YOffset+yBM.f(i);
+            MDRAW(trcnt,i)=MOffset+mBM.f(i)+uM[u_index[i]];
+            YDRAW(trcnt,i)=YOffset+yBM.f(i)+uY[u_index[i]];
           }
           for(size_t j=0;j<J;j++) {
             UMDRAW(trcnt,j)=uM[j];
@@ -471,8 +473,6 @@ RcppExport SEXP crBARTmediation(SEXP _in,      // number of observations in trai
     int time2 = time(&tp);
     printf("time: %ds\n",time2-time1);
     printf("trcnt: %zu,%zu\n",trcnt);
-    
-    delete[] Mz;
     
 #ifndef NoRcpp
     

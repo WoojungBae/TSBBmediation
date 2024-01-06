@@ -1,0 +1,11 @@
+^.*\.Rproj$
+^\.Rproj\.user$
+
+.Rhistory
+.gitignore
+README.md
+
+source
+sourceBART
+SimulationStudy
+RealDataAnalysis

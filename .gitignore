@@ -3,7 +3,6 @@
 .Rhistory
 .Ruserdata
 
-.Rbuildignore
 *.RData
 *.Rproj
 *.o
