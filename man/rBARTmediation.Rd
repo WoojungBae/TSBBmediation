@@ -32,9 +32,9 @@ rBARTmediation(Y, M, Z, C,
                Moffset = mean(M), Yoffset = mean(Y),
                ntree=200L, 
                matXnumcut=100L, matMnumcut=100L,
-               ndpost=1000L, nskip=100L, keepevery=1L,
-               printevery=100L, transposed=FALSE,
-               hostname=FALSE,
+               ndpost=1e3, nskip=1e4, keepevery=1e1,
+               printevery = (ndpost*keepevery)/10,
+               transposed=FALSE, hostname=FALSE,
                mc.cores = 1L, nice = 19L, seed = 99L)
 }
 \arguments{

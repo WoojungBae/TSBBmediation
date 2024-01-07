@@ -27,9 +27,9 @@ mc.rBART <- function(matX, M,
                      lambda=NA, tau.num=NA,
                      offset=mean(M), 
                      ntree=200L, numcut=100L,
-                     ndpost=1000L, nskip=100L, keepevery=1L,
-                     printevery=100L, transposed=FALSE,
-                     hostname=FALSE,
+                     ndpost=1e3, nskip=1e4, keepevery=1e1,
+                     printevery = (ndpost*keepevery)/10,
+                     transposed=FALSE, hostname=FALSE,
                      mc.cores = 1L, nice = 19L, seed = 99L){
   
   #--------------------------------------------------
