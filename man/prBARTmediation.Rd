@@ -18,11 +18,13 @@ small amount to the overall fit.
 }
 \usage{
 prBARTmediation(object,   # object from rBARTmediation
-                X.test)   # matX matrix to predict at
+                X.test,   # matX matrix to predict at
+                Uindex)
 }
 \arguments{
   \item{object}{\code{object} returned from \code{rBARTmediation}.}
   \item{X.test}{Matrix of covariates to predict \eqn{y} for.}
+  \item{Uindex}{Integer indices specifying the random effects.}
 }
 \details{
    BART is an Bayesian MCMC method.
@@ -83,12 +85,12 @@ prBARTmediation(object,   # object from rBARTmediation
   
   # test BART with token run to ensure installation works
   BARTfit = rBARTmediation(y,m,z,c,Uindex=u0,nskip=5,ndpost=5)
-  BARTfitPRED = predict(BARTfit, c)
+  BARTfitPRED = predict(BARTfit, c, u0)
 
   \dontrun{
     # run BART
     BARTfit = rBARTmediation(y,m,z,c,Uindex=u0)
-    BARTfitPRED = predict(BARTfit,c)
+    BARTfitPRED = predict(BARTfit,c,u0)
   }
 }
 \keyword{nonparametric}

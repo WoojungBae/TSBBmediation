@@ -16,7 +16,7 @@
 ## along with this program; if not, a copy is available at
 ## https://www.R-project.org/Licenses/GPL-2
 
-predict.rBARTmediation <- function(object, newdata, ...) {
+predict.rBARTmediation <- function(object, newdata, Uindex, ...) {
   call <- prBARTmediation
-  return(call(object, newdata, ...))
+  return(call(object, newdata, Uindex, ...))
 }

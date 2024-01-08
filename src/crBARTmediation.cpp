@@ -430,10 +430,10 @@ RcppExport SEXP crBARTmediation(SEXP _in,      // number of observations in trai
       if(postrep>=burn) {
         if(nkeeptrain && (((postrep-burn+1) % skiptr) ==0)) {
           for(size_t i=0;i<n;i++) {
-            // MDRAW(trcnt,i)=MOffset+mBM.f(i);
-            // YDRAW(trcnt,i)=YOffset+yBM.f(i);
-            MDRAW(trcnt,i)=MOffset+mBM.f(i)+uM[u_index[i]];
-            YDRAW(trcnt,i)=YOffset+yBM.f(i)+uY[u_index[i]];
+            MDRAW(trcnt,i)=MOffset+mBM.f(i);
+            YDRAW(trcnt,i)=YOffset+yBM.f(i);
+            // MDRAW(trcnt,i)=MOffset+mBM.f(i)+uM[u_index[i]];
+            // YDRAW(trcnt,i)=YOffset+yBM.f(i)+uY[u_index[i]];
           }
           for(size_t j=0;j<J;j++) {
             UMDRAW(trcnt,j)=uM[j];

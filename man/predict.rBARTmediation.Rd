@@ -17,11 +17,12 @@ so that it contributes a
 small amount to the overall fit.
 }
 \usage{
-   \method{predict}{rBARTmediation}(object, newdata, ...)
+   \method{predict}{rBARTmediation}(object, newdata, Uindex, ...)
 }
 \arguments{
    \item{object}{ \code{object} returned from previous BART fit.}
    \item{newdata}{ Matrix of covariates to predict \eqn{y} for.}
+   \item{Uindex}{Integer indices specifying the random effects.}
    \item{...}{ Other arguments which will be passed on to \code{prBARTmediation}.}
 }
 \details{
@@ -83,12 +84,12 @@ small amount to the overall fit.
   
   # test BART with token run to ensure installation works
   BARTfit = rBARTmediation(y,m,z,c,Uindex=u0,nskip=5,ndpost=5)
-  BARTfitPRED = predict(BARTfit, c)
+  BARTfitPRED = predict(BARTfit, c, u0)
 
   \dontrun{
     # run BART
     BARTfit = rBARTmediation(y,m,z,c,Uindex=u0)
-    BARTfitPRED = predict(BARTfit,c)
+    BARTfitPRED = predict(BARTfit,c,u0)
   }
 }
 \keyword{nonparametric}

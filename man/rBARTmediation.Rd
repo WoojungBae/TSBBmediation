@@ -286,12 +286,12 @@ rBARTmediation(Y, M, Z, C,
   
   # test BART with token run to ensure installation works
   BARTfit = rBARTmediation(y,m,z,c,Uindex=u0,nskip=5,ndpost=5)
-  BARTfitPRED = predict(BARTfit, c)
+  BARTfitPRED = predict(BARTfit, c, u0)
 
   \dontrun{
     # run BART
     BARTfit = rBARTmediation(y,m,z,c,Uindex=u0)
-    BARTfitPRED = predict(BARTfit,c)
+    BARTfitPRED = predict(BARTfit,c,u0)
   }
 }
 \keyword{nonparametric}

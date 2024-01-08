@@ -17,12 +17,18 @@
 ## https://www.R-project.org/Licenses/GPL-2
 
 prBARTmediation = function(object,  # object from rBARTmediation
-                           X.test){	# matrix X to predict at
-  mc.cores = 1
+                           X.test,  # matrix X to predict at
+                           Uindex){
   
   # --------------------------------------------------
+  mc.cores = 1
+  
   z0 = 0
   z1 = 1
+  
+  N = nrow(X.test)
+  J = ncol(object$uMdraw)
+  # n_MCMC = nrow(object$uMdraw)
   
   matXz0.test <- t(bartModelMatrix(cbind(z0,X.test)))
   matXz1.test <- t(bartModelMatrix(cbind(z1,X.test)))
@@ -32,24 +38,35 @@ prBARTmediation = function(object,  # object from rBARTmediation
     stop(paste0('The number of columns in matX.test must be equal to ', pm))
   }
   
-  M0res = .Call("cprBART", object$matXtreedraws, matXz0.test, mc.cores)
-  M1res = .Call("cprBART", object$matXtreedraws, matXz1.test, mc.cores)
-  
-  M0.test = apply(M0res$yhat.test, 2, mean) + object$Moffset
-  M1.test = apply(M1res$yhat.test, 2, mean) + object$Moffset
+  M0res = .Call("cprBART", object$matXtreedraws, matXz0.test, mc.cores)$yhat.test
+  M1res = .Call("cprBART", object$matXtreedraws, matXz1.test, mc.cores)$yhat.test
+  for (j in 1:J) {
+    whichUindex = which(Uindex==j)
+    M0res[,whichUindex] = M0res[,whichUindex] + object$uMdraw[,j]
+    M1res[,whichUindex] = M1res[,whichUindex] + object$uMdraw[,j]
+  }
+  M0.test = apply(M0res, 2, mean) + object$Moffset
+  M1.test = apply(M1res, 2, mean) + object$Moffset
+  M0.test = rnorm(N, M0.test, mean(object$iMsigest))
+  M1.test = rnorm(N, M1.test, mean(object$iMsigest))
   
   # --------------------------------------------------
   matM0z0.test = rbind(M0.test,matXz0.test)
   matM0z1.test = rbind(M0.test,matXz1.test)
   matM1z1.test = rbind(M1.test,matXz1.test)
   
-  Yz0m0res = .Call("cprBART", object$matMtreedraws, matM0z0.test, mc.cores)
-  Yz1m0res = .Call("cprBART", object$matMtreedraws, matM0z1.test, mc.cores)
-  Yz1m1res = .Call("cprBART", object$matMtreedraws, matM1z1.test, mc.cores)
-  
-  Yz0m0.test = Yz0m0res$yhat.test + object$Yoffset
-  Yz1m0.test = Yz1m0res$yhat.test + object$Yoffset
-  Yz1m1.test = Yz1m1res$yhat.test + object$Yoffset
+  Yz0m0res = .Call("cprBART", object$matMtreedraws, matM0z0.test, mc.cores)$yhat.test
+  Yz1m0res = .Call("cprBART", object$matMtreedraws, matM0z1.test, mc.cores)$yhat.test
+  Yz1m1res = .Call("cprBART", object$matMtreedraws, matM1z1.test, mc.cores)$yhat.test
+  for (j in 1:J) {
+    whichUindex = which(Uindex==j)
+    Yz0m0res[,whichUindex] = Yz0m0res[,whichUindex] + object$uYdraw[,j]
+    Yz1m0res[,whichUindex] = Yz1m0res[,whichUindex] + object$uYdraw[,j]
+    Yz1m1res[,whichUindex] = Yz1m1res[,whichUindex] + object$uYdraw[,j]
+  }
+  Yz0m0.test = Yz0m0res + object$Yoffset
+  Yz1m0.test = Yz1m0res + object$Yoffset
+  Yz1m1.test = Yz1m1res + object$Yoffset
   
   return(list(Yz0m0.test=Yz0m0.test,
               Yz1m0.test=Yz1m0.test,
