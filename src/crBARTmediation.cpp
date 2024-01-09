@@ -143,10 +143,10 @@ RcppExport SEXP crBARTmediation(SEXP _in,      // number of observations in trai
   Rcpp::IntegerMatrix matMvarcnt(nkeeptreedraws,py);
   Rcpp::NumericMatrix matXinfo(_matXinfo);
   Rcpp::NumericMatrix matMinfo(_matMinfo);
-  Rcpp::NumericVector Msdraw(numdraw+burn);
-  Rcpp::NumericVector Ysdraw(numdraw+burn);
-  Rcpp::NumericVector Msdudraw(numdraw+burn);
-  Rcpp::NumericVector Ysdudraw(numdraw+burn);
+  Rcpp::NumericVector Msdraw(nkeeptrain);
+  Rcpp::NumericVector Ysdraw(nkeeptrain);
+  Rcpp::NumericVector Msdudraw(nkeeptrain);
+  Rcpp::NumericVector Ysdudraw(nkeeptrain);
   Rcpp::NumericMatrix Mdraw(nkeeptrain,n);
   Rcpp::NumericMatrix Ydraw(nkeeptrain,n);
   Rcpp::NumericMatrix uMdraw(nkeeptrain,J);
@@ -377,8 +377,6 @@ RcppExport SEXP crBARTmediation(SEXP _in,      // number of observations in trai
       }
       iMsigest = sqrt((nu*Mlambda + Mrss)/gen.chi_square(df));
       iYsigest = sqrt((nu*Ylambda + Yrss)/gen.chi_square(df));
-      Msdraw[postrep]=iMsigest;
-      Ysdraw[postrep]=iYsigest;
       
       //--------------------------------------------------
       // draw tau_uM
@@ -391,8 +389,6 @@ RcppExport SEXP crBARTmediation(SEXP _in,      // number of observations in trai
       tau_uM=rtgamma(0.5*(J-1.), 0.5*sum_uM2, invB2M, gen); 
       tau_uY=rtgamma(0.5*(J-1.), 0.5*sum_uY2, invB2Y, gen); 
       
-      Msdudraw[postrep]=pow(tau_uM, -0.5);
-      Ysdudraw[postrep]=pow(tau_uY, -0.5);
       //--------------------------------------------------
       // draw uM
       size_t jj, n_j;
@@ -435,37 +431,44 @@ RcppExport SEXP crBARTmediation(SEXP _in,      // number of observations in trai
             // MDRAW(trcnt,i)=MOffset+mBM.f(i)+uM[u_index[i]];
             // YDRAW(trcnt,i)=YOffset+yBM.f(i)+uY[u_index[i]];
           }
+          Msdraw[trcnt]=iMsigest;
+          Ysdraw[trcnt]=iYsigest;
+          
           for(size_t j=0;j<J;j++) {
             UMDRAW(trcnt,j)=uM[j];
             UYDRAW(trcnt,j)=uY[j];
           }
+          Msdudraw[trcnt]=pow(tau_uM, -0.5);
+          Ysdudraw[trcnt]=pow(tau_uY, -0.5);
+          
           trcnt+=1;
-        }
-        keeptreedraw = nkeeptreedraws && (((postrep-burn+1) % skiptreedraws) ==0);
-        if(keeptreedraw) {
-          for(size_t j=0;j<numtree;j++) {
-            matXtreess << mBM.gettree(j);
-            matMtreess << yBM.gettree(j);
+          
+          keeptreedraw = nkeeptreedraws && (((postrep-burn+1) % skiptreedraws) ==0);
+          if(keeptreedraw) {
+            for(size_t j=0;j<numtree;j++) {
+              matXtreess << mBM.gettree(j);
+              matMtreess << yBM.gettree(j);
 #ifndef NoRcpp
-            imatXvarcnt=mBM.getnv();
-            imatXvarprb=mBM.getpv();
-            size_t it=(postrep-burn)/skiptreedraws;
-            for(size_t q=0;q<pm;q++){
-              matXvarcnt(it,q)=imatXvarcnt[q];
-              matXvarprb(it,q)=imatXvarprb[q];
-            }
-            imatMvarcnt=yBM.getnv();
-            imatMvarprb=yBM.getpv();
-            for(size_t q=0;q<py;q++){
-              matMvarcnt(it,q)=imatMvarcnt[q];
-              matMvarprb(it,q)=imatMvarprb[q];
-            }
+              imatXvarcnt=mBM.getnv();
+              imatXvarprb=mBM.getpv();
+              size_t it=(postrep-burn)/skiptreedraws;
+              for(size_t q=0;q<pm;q++){
+                matXvarcnt(it,q)=imatXvarcnt[q];
+                matXvarprb(it,q)=imatXvarprb[q];
+              }
+              imatMvarcnt=yBM.getnv();
+              imatMvarprb=yBM.getpv();
+              for(size_t q=0;q<py;q++){
+                matMvarcnt(it,q)=imatMvarcnt[q];
+                matMvarprb(it,q)=imatMvarprb[q];
+              }
 #else
-            matXvarcnt.push_back(mBM.getnv());
-            matXvarprb.push_back(mBM.getpv());
-            matMvarcnt.push_back(yBM.getnv());
-            matMvarprb.push_back(yBM.getpv());
+              matXvarcnt.push_back(mBM.getnv());
+              matXvarprb.push_back(mBM.getpv());
+              matMvarcnt.push_back(yBM.getnv());
+              matMvarprb.push_back(yBM.getpv());
 #endif
+            }
           }
         }
       }
@@ -479,18 +482,18 @@ RcppExport SEXP crBARTmediation(SEXP _in,      // number of observations in trai
     //--------------------------------------------------
     //return list
     Rcpp::List ret;
-    ret["iMsigest"]=Msdraw;
-    ret["iYsigest"]=Ysdraw;
     ret["Mdraw"]=Mdraw;
     ret["Ydraw"]=Ydraw;
-    ret["matXvarcount"]=matXvarcnt;
-    ret["matMvarcount"]=matMvarcnt;
-    ret["matXvarprob"]=matXvarprb;
-    ret["matMvarprob"]=matMvarprb;
+    ret["iMsigest"]=Msdraw;
+    ret["iYsigest"]=Ysdraw;
     ret["uMdraw"]=uMdraw;
     ret["uYdraw"]=uYdraw;
     ret["sd.uM"]=Msdudraw;
     ret["sd.uY"]=Ysdudraw;
+    ret["matXvarcount"]=matXvarcnt;
+    ret["matMvarcount"]=matMvarcnt;
+    ret["matXvarprob"]=matXvarprb;
+    ret["matMvarprob"]=matMvarprb;
     
     Rcpp::List matxiret(matXxi.size());
     for(size_t it=0;it<matXxi.size();it++) {
