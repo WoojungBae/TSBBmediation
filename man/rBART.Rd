@@ -59,7 +59,7 @@ mc.rBART(matX, M,
     Note that \eqn{q} dummies are created if \eqn{q>2} and one dummy
     created if \eqn{q=2} where \eqn{q} is the number of levels of the
     factor.  \code{rBART} will generate draws of \eqn{f(matX)} for each
-    \eqn{matX} which is a row of \code{matX}.  }
+    \eqn{matX} which is a row of matX.  }
 
    \item{M}{
    Continuous or binary dependent variable for training (in sample) data.\cr
@@ -151,7 +151,7 @@ argument \code{type} to specify a logit BART model.
    %%   The width of the interval to scale the variance for the terminal
    %%   leaf values.  Only used if \eqn{m} is binary.}
 
-   \item{offset}{ Continous BART operates on \code{M} centered by
+   \item{offset}{ Continous BART operates on M centered by
    \code{offset} which defaults to \code{mean(M)}.  With binary
    BART, the centering is \eqn{P(Y=1 | matX) = F(f(matX) + offset)} where
    \code{offset} defaults to \code{F^{-1}(mean(M))}.  You can use
@@ -166,9 +166,9 @@ argument \code{type} to specify a logit BART model.
    variables.  Otherwise a vector with length equal to
    \code{ncol(matX)} is required, where the \eqn{i^{th}}{i^th}
    element gives the number of \eqn{c} used for the \eqn{i^{th}}{i^th}
-   variable in \code{matX}.  If usequants is false, numcut equally
+   variable in matX.  If usequants is false, numcut equally
    spaced cutoffs are used covering the range of values in the
-   corresponding column of \code{matX}.  If \code{usequants} is true, then
+   corresponding column of matX.  If \code{usequants} is true, then
    \eqn{min(numcut, the number of unique values in the corresponding
    columns of matX - 1)} values are used.  }
 
@@ -194,7 +194,7 @@ argument \code{type} to specify a logit BART model.
 
    \item{transposed}{
    When running \code{rBART} in parallel, it is more memory-efficient
-   to transpose \code{matX} and \code{matX.test}, if any, prior to
+   to transpose matX and \code{matX.test}, if any, prior to
    calling \code{mc.rBART}.
  }
 
@@ -228,9 +228,9 @@ argument \code{type} to specify a logit BART model.
    The output consists of values \eqn{f^*(matX)}{f*(matX)} (and
    \eqn{\sigma^*}{sigma*} in the numeric case) where * denotes a
    particular draw.  The \eqn{matX} is either a row from the training data,
-   \code{matX} or the test data, \code{matX.test}.
+   matX or the test data, \code{matX.test}.
 
-   For \code{matX}/{matX.test} with missing data elements, \code{rBART}
+   For matX/{matX.test} with missing data elements, \code{rBART}
    will singly impute them with hot decking. For one or more missing
    covariates, record-level hot-decking imputation \cite{deWaPann11} is
    employed that is biased towards the null, i.e., nonmissing values
@@ -240,7 +240,7 @@ argument \code{type} to specify a logit BART model.
    decking, i.e., a separate imputation for each thread.  This
    record-level hot-decking imputation is biased towards the null, i.e.,
    nonmissing values from another record are randomly selected
-   regardless of \code{M}.
+   regardless of M.
 
  }
 

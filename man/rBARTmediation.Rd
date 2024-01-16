@@ -110,7 +110,7 @@ rBARTmediation(Y, M, Z, C,
     estimate.  Not used if \eqn{m} is binary. }
   \item{k}{For numeric \eqn{m}, \code{k} is the number of prior
     standard deviations \eqn{E(Y|X) = f(X)} is away from +/-0.5.  The
-    response, code{M}, is internally scaled to range from -0.5 to
+    response, M, is internally scaled to range from -0.5 to
     0.5.  For binary \eqn{m}, \code{k} is the number of prior standard
     deviations \eqn{f(X)} is away from +/-3.  The bigger \code{k} is, the more
     conservative the fitting will be.  }
@@ -126,12 +126,12 @@ rBARTmediation(Y, M, Z, C,
     \code{Mtau=Mtau.num/(sqrt(ntree))}. }
   \item{Ytau.num}{The numerator in the \code{Ytau} definition, i.e.,
     \code{Ytau=Ytau.num/(sqrt(ntree))}. }
-  \item{Moffset}{Continous BART operates on \code{M} centered by
+  \item{Moffset}{Continous BART operates on M centered by
     \code{Moffset} which defaults to \code{mean(M)}.  With binary
     BART, the centering is \eqn{P(Y=1 | X) = F(f(X) + offset)} where
     \code{Moffset} defaults to \code{F^{-1}(mean(M))}.  You can use
     the \code{Moffset} parameter to over-ride these defaults.}
-  \item{Yoffset}{Continous BART operates on \code{Y} centered by
+  \item{Yoffset}{Continous BART operates on Y centered by
     \code{Yoffset} which defaults to \code{mean(Y)}.  With binary
     BART, the centering is \eqn{P(Y=1 | X) = F(f(X) + offset)} where
     \code{Yoffset} defaults to \code{F^{-1}(mean(M))}.  You can use
@@ -152,9 +152,9 @@ rBARTmediation(Y, M, Z, C,
     variables.  Otherwise a vector with length equal to
     \code{ncol(matM)} is required, where the \eqn{i^{th}}{i^th}
     element gives the number of \eqn{c} used for the \eqn{i^{th}}{i^th}
-    variable in \code{matM}.  If usequants is false, numcut equally
+    variable in matM.  If usequants is false, numcut equally
     spaced cutoffs are used covering the range of values in the
-    corresponding column of \code{matM}.  If \code{usequants} is true, then
+    corresponding column of matM.  If \code{usequants} is true, then
     \eqn{min(numcut, the number of unique values in the corresponding
     columns of matM - 1)} values are used.}
   \item{ndpost}{The number of posterior draws returned.}
@@ -195,7 +195,7 @@ rBARTmediation(Y, M, Z, C,
   decking, i.e., a separate imputation for each thread.  This
   record-level hot-decking imputation is biased towards the null, i.e.,
   nonmissing values from another record are randomly selected
-  regardless of \code{M}.
+  regardless of M.
 }
 
 \value{
