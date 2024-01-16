@@ -142,9 +142,9 @@ rBARTmediation(Y, M, Z, C,
     variables.  Otherwise a vector with length equal to
     \code{ncol(X)} is required, where the \eqn{i^{th}}{i^th}
     element gives the number of \eqn{c} used for the \eqn{i^{th}}{i^th}
-    variable in \code{X}.  If usequants is false, numcut equally
+    variable in X.  If usequants is false, numcut equally
     spaced cutoffs are used covering the range of values in the
-    corresponding column of \code{X}.  If \code{usequants} is true, then
+    corresponding column of X.  If \code{usequants} is true, then
     \eqn{min(numcut, the number of unique values in the corresponding
     columns of X - 1)} values are used.}
   \item{matMnumcut}{The number of possible values of \eqn{c} (see
@@ -162,7 +162,7 @@ rBARTmediation(Y, M, Z, C,
   \item{printevery}{As the MCMC runs, a message is printed every printevery draws.}
   \item{keepevery}{Every keepevery draw is kept to be returned to the user.}
   \item{transposed}{When running \code{rBARTmediation} in parallel, it is more memory-efficient
-    to transpose \code{X} and \code{X.test}, if any, prior to
+    to transpose X and X.test, if any, prior to
     calling \code{mc.rBARTmediation}.}
   \item{hostname}{When running on a cluster occasionally it is useful
     to track on which node each chain is running; to do so
@@ -183,9 +183,9 @@ rBARTmediation(Y, M, Z, C,
   The output consists of values \eqn{f^*(X)}{f*(X)} (and
   \eqn{\sigma^*}{sigma*} in the numeric case) where * denotes a
   particular draw.  The \eqn{X} is either a row from the training data,
-  \code{X} or the test data, \code{X.test}.
+  X or the test data, X.test.
   
-  For \code{X}/{X.test} with missing data elements, \code{rBARTmediation}
+  For X/X.test with missing data elements, \code{rBARTmediation}
   will singly impute them with hot decking. For one or more missing
   covariates, record-level hot-decking imputation \cite{deWaPann11} is
   employed that is biased towards the null, i.e., nonmissing values

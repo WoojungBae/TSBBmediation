@@ -126,7 +126,7 @@ argument \code{type} to specify a logit BART model.
 
    \item{k}{ For numeric \eqn{m}, \code{k} is the number of prior
    standard deviations \eqn{E(Y|matX) = f(matX)} is away from +/-0.5.  The
-   response, code{M}, is internally scaled to range from -0.5 to
+   response, M, is internally scaled to range from -0.5 to
    0.5.  For binary \eqn{m}, \code{k} is the number of prior standard
    deviations \eqn{f(matX)} is away from +/-3.  The bigger \code{k} is, the more
    conservative the fitting will be.  }
@@ -194,7 +194,7 @@ argument \code{type} to specify a logit BART model.
 
    \item{transposed}{
    When running \code{rBART} in parallel, it is more memory-efficient
-   to transpose matX and \code{matX.test}, if any, prior to
+   to transpose matX and matX.test, if any, prior to
    calling \code{mc.rBART}.
  }
 
@@ -228,9 +228,9 @@ argument \code{type} to specify a logit BART model.
    The output consists of values \eqn{f^*(matX)}{f*(matX)} (and
    \eqn{\sigma^*}{sigma*} in the numeric case) where * denotes a
    particular draw.  The \eqn{matX} is either a row from the training data,
-   matX or the test data, \code{matX.test}.
+   matX or the test data, matX.test.
 
-   For matX/{matX.test} with missing data elements, \code{rBART}
+   For matX/matX.test with missing data elements, \code{rBART}
    will singly impute them with hot decking. For one or more missing
    covariates, record-level hot-decking imputation \cite{deWaPann11} is
    employed that is biased towards the null, i.e., nonmissing values
