@@ -50,7 +50,6 @@ prBARTmediation = function(object,  # object from rBARTmediation
   M0.test = apply(M0.test, 2, mean)
   M1.test = apply(M1.test, 2, mean)
   
-  
   # --------------------------------------------------
   matM0z0.test = rbind(M0.test,matXz0.test)
   matM0z1.test = rbind(M0.test,matXz1.test)
@@ -68,9 +67,9 @@ prBARTmediation = function(object,  # object from rBARTmediation
   Yz0m0.test = Yz0m0res
   Yz1m0.test = Yz1m0res
   Yz1m1.test = Yz1m1res
-  Yz0m0.test = sapply(1:N, function(i) rnorm(n_MCMC, Yz0m0.test[,i], object$iYsigest))
-  Yz1m0.test = sapply(1:N, function(i) rnorm(n_MCMC, Yz1m0.test[,i], object$iYsigest))
-  Yz1m1.test = sapply(1:N, function(i) rnorm(n_MCMC, Yz1m1.test[,i], object$iYsigest))
+  # Yz0m0.test = sapply(1:N, function(i) rnorm(n_MCMC, Yz0m0.test[,i], object$iYsigest))
+  # Yz1m0.test = sapply(1:N, function(i) rnorm(n_MCMC, Yz1m0.test[,i], object$iYsigest))
+  # Yz1m1.test = sapply(1:N, function(i) rnorm(n_MCMC, Yz1m1.test[,i], object$iYsigest))
   
   return(list(Yz0m0.test=Yz0m0.test,
               Yz1m0.test=Yz1m0.test,
