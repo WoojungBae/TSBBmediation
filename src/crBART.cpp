@@ -203,7 +203,7 @@ RcppExport SEXP crBART(SEXP _in,      // number of observations in training data
     //--------------------------------------------------
     // print args
     printf("*****Data:\n");
-    printf("data:n,p: %zu, %zu, %zu\n",n,p);
+    printf("data:n,p: %zu, %zu\n",n,p);
     printf("y1,yn: %lf, %lf\n",iM[0],iM[n-1]);
     printf("x1,x[n*p]: %lf, %lf\n",imatX[0],imatX[n*p-1]);
     //   if(hotdeck) 
@@ -338,7 +338,7 @@ RcppExport SEXP crBART(SEXP _in,      // number of observations in training data
     }
     int time2 = time(&tp);
     printf("time: %ds\n",time2-time1);
-    printf("trcnt: %zu,%zu\n",trcnt);
+    printf("trcnt: %zu\n",trcnt);
     
     delete[] z;
     

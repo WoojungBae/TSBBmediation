@@ -475,7 +475,7 @@ RcppExport SEXP crBARTmediation(SEXP _in,      // number of observations in trai
     }
     int time2 = time(&tp);
     printf("time: %ds\n",time2-time1);
-    printf("trcnt: %zu,%zu\n",trcnt);
+    printf("trcnt: %zu\n",trcnt);
     
 #ifndef NoRcpp
     
