@@ -115,11 +115,11 @@ y = Ey + sigma*rnorm(n) + u[u0]
 lmFit = lm(y~.,data.frame(x,y)) 
 
 ##test BART with token run to ensure installation works
-bartFit = rBART(x,y,Uindex=u0,nskip=5,ndpost=5)
+bartFit = rBART(y,x,Uindex=u0,nskip=5,ndpost=5)
 
 \dontrun{
 ##run BART
-bartFit = rBART(x,y,Uindex=u0)
+bartFit = rBART(y,x,Uindex=u0)
 }
 }
 \keyword{nonparametric}

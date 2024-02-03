@@ -16,8 +16,9 @@
 ## along with this program; if not, a copy is available at
 ## https://www.R-project.org/Licenses/GPL-2
 
-rBART = function(matX, M, 
-                 Uindex=NULL, B_u=NULL,
+rBART = function(Y, matX, Uindex=NULL,
+                 typeY = "continuous", 
+                 B_u=NULL,
                  sparse=FALSE, theta=0, omega=1,
                  a=0.5, b=1, augment=FALSE, rho=NULL,
                  xinfo=matrix(0,0,0), usequants=FALSE,
@@ -25,7 +26,7 @@ rBART = function(matX, M,
                  sigest=NA, sigdf=3, sigquant=0.90,
                  k=2, power=2, base=0.95,
                  lambda=NA, tau.num=NA,
-                 offset = mean(M),
+                 offset = mean(Y),
                  ntree=200L, numcut=100L,
                  ndpost=1e3, nskip=1e4, keepevery=1e1,
                  printevery = (ndpost*keepevery)/10,
@@ -34,7 +35,7 @@ rBART = function(matX, M,
   
   #--------------------------------------------------
   # data
-  n = length(M)
+  n = length(Y)
   
   if(length(Uindex)==0)
     stop("the random effects indices must be provided")
@@ -65,7 +66,7 @@ rBART = function(matX, M,
   }
   
   if(n!=ncol(matX)){
-    stop('The length of M and the number of rows in matX must be identical')
+    stop('The length of Y and the number of rows in matX must be identical')
   }
   
   p = nrow(matX)
@@ -80,15 +81,15 @@ rBART = function(matX, M,
   if(is.na(lambda)) {
     if(is.na(sigest)) {
       if(p < n) {
-        temp = lme(M~., random=~1|factor(Uindex),
-                   data.frame(t(matX),Uindex,M))
+        temp = lme(Y~., random=~1|factor(Uindex),
+                   data.frame(t(matX),Uindex,Y))
         sigest = summary(temp)$sigma
         u = c(temp$coefficients$random[[1]])
         if(length(B_u)==0) {
           B_u=2*sd(u)
         }
       } else {
-        sigest = sd(M)
+        sigest = sd(Y)
       }
     }
     qchi = qchisq(1.0-sigquant,nu)
@@ -97,7 +98,7 @@ rBART = function(matX, M,
     sigest=sqrt(lambda)
   }
   if(is.na(tau.num)) {
-    tau=(max(M)-min(M))/(2*k*sqrt(ntree))
+    tau=(max(Y)-min(Y))/(2*k*sqrt(ntree))
   } else {
     tau = tau.num/sqrt(ntree)
   }
@@ -113,37 +114,39 @@ rBART = function(matX, M,
   }
   #--------------------------------------------------
   ptm <- proc.time()
-  res = .Call("crBART",
-              n,         # number of observations in training data
-              p,         # dimension of x
-              matX,   # p x n training data matX
-              M,      # 1 x n training data M
-              c.index,
-              n.j.vec,
-              u,         # random effects, if estimated
-              J,
-              B_u,
-              ntree,
-              numcut,
-              ndpost*keepevery,
-              nskip,
-              keepevery,
-              power,
-              base,
-              offset,
-              tau,
-              nu,
-              lambda,
-              sigest,
-              sparse,
-              theta,
-              omega,
-              a,
-              b,
-              rho,
-              augment,
-              printevery,
-              xinfo)
+  if(typeY == "continuous") {
+    res = .Call("crBART",
+                n,         # number of observations in training data
+                p,         # dimension of x
+                matX,   # p x n training data matX
+                Y,      # 1 x n training data Y
+                c.index,
+                n.j.vec,
+                u,         # random effects, if estimated
+                J,
+                B_u,
+                ntree,
+                numcut,
+                ndpost*keepevery,
+                nskip,
+                keepevery,
+                power,
+                base,
+                offset,
+                tau,
+                nu,
+                lambda,
+                sigest,
+                sparse,
+                theta,
+                omega,
+                a,
+                b,
+                rho,
+                augment,
+                printevery,
+                xinfo)
+  }
   res$proc.time <- proc.time()-ptm
   #--------------------------------------------------
   

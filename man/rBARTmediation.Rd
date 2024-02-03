@@ -17,8 +17,10 @@ each tree is constrained by a prior to be a weak learner
 so that it contributes a small amount to the overall fit.
 }
 \usage{
-rBARTmediation(Y, M, Z, C, 
-               Uindex=NULL, B_uM=NULL, B_uY=NULL,
+rBARTmediation(Y, M, Z, X, Uindex=NULL, 
+               typeY = "continuous", 
+               typeM = "continuous",
+               B_uM=NULL, B_uY=NULL,
                sparse=FALSE, theta=0, omega=1,
                a=0.5, b=1, augment=FALSE, 
                matXrho=NULL, matMrho=NULL,
@@ -48,16 +50,23 @@ rBARTmediation(Y, M, Z, C,
     If \eqn{m} is binary (has only 0's and 1's), then a binary BART model
     with a probit link is fit by default: you can over-ride the default via the
     argument \code{type} to specify a logit BART model.}
-  \item{Z}{Binary treatment.}
-  \item{C}{Explanatory variables for training (in sample)
+  \item{Z}{Cluster-level treatment (Binary).}
+  \item{X}{Individual-level and Cluster-level confounders:
+    Explanatory variables for training (in sample)
     data.\cr May be a matrix or a data frame, with (as usual) rows
     corresponding to observations and columns to variables.\cr If a
     variable is a factor in a data frame, it is replaced with dummies.
     Note that \eqn{q} dummies are created if \eqn{q>2} and one dummy
     created if \eqn{q=2} where \eqn{q} is the number of levels of the
     factor.  \code{rBARTmediation} will generate draws of \eqn{f(X)} for each
-    \eqn{X} which is a row of \code{X = (Z, C)}.}
+    \eqn{matX} which is a row of \code{matX = (Z, X)}.}
   \item{Uindex}{Integer indices specifying the random effects.}
+  \item{typeY}{ You can use this argument to specify the type of fit:
+    "continuous", "binary", "multinomial". 
+  }
+  \item{typeM}{ You can use this argument to specify the type of fit:
+    "continuous", "binary", "multinomial". 
+  }
   \item{B_uM}{The prior for the standard deviation of the random effects (\eqn{m})
     is \eqn{U(0, B_uM)}.}
   \item{B_uY}{The prior for the standard deviation of the random effects (\eqn{y})
@@ -137,21 +146,21 @@ rBARTmediation(Y, M, Z, C,
     \code{Yoffset} defaults to \code{F^{-1}(mean(M))}.  You can use
     the \code{Yoffset} parameter to over-ride these defaults.}
   \item{ntree}{The number of trees in the sum.}
-  \item{matXnumcut}{The number of possible values of \eqn{c} (see
+  \item{matXnumcut}{The number of possible values of \eqn{x} (see
     \code{usequants}).  If a single number if given, this is used for all
     variables.  Otherwise a vector with length equal to
     \code{ncol(X)} is required, where the \eqn{i^{th}}{i^th}
-    element gives the number of \eqn{c} used for the \eqn{i^{th}}{i^th}
+    element gives the number of \eqn{x} used for the \eqn{i^{th}}{i^th}
     variable in X.  If usequants is false, numcut equally
     spaced cutoffs are used covering the range of values in the
     corresponding column of X.  If \code{usequants} is true, then
     \eqn{min(numcut, the number of unique values in the corresponding
     columns of X - 1)} values are used.}
-  \item{matMnumcut}{The number of possible values of \eqn{c} (see
+  \item{matMnumcut}{The number of possible values of \eqn{x} (see
     \code{usequants}).  If a single number if given, this is used for all
     variables.  Otherwise a vector with length equal to
     \code{ncol(matM)} is required, where the \eqn{i^{th}}{i^th}
-    element gives the number of \eqn{c} used for the \eqn{i^{th}}{i^th}
+    element gives the number of \eqn{x} used for the \eqn{i^{th}}{i^th}
     variable in matM.  If usequants is false, numcut equally
     spaced cutoffs are used covering the range of values in the
     corresponding column of matM.  If \code{usequants} is true, then
@@ -270,28 +279,27 @@ rBARTmediation(Y, M, Z, C,
   u0 = sample(1:J, n, replace = TRUE)
   z = rbinom(J, 1, 0.5)
   z = z[u0]
-  c = matrix(runif(n*9),n,9)
-  x = cbind(z, c)
+  x = matrix(runif(n*9),n,9)
   
-  # m = f(x) + Msigma * z where Msigma = 1.0 and z ~ N(0,1)
-  m0 = f(cbind(0, c)) + 1*rnorm(n)
-  m1 = f(cbind(1, c)) + 1*rnorm(n)
+  # m = f(matx) + Msigma * z where Msigma = 1.0 and z ~ N(0,1) and matx = cbind(z, x)
+  m0 = f(cbind(0, x)) + 1*rnorm(n)
+  m1 = f(cbind(1, x)) + 1*rnorm(n)
   m = ifelse(z==1,m1,m0)
   
-  # y = g(x) * m + Ysigma * z where Ysigma = 2.0 and z ~ N(0,1)
-  y00 = g(cbind(0, c)) * m0 + 2 * rnorm(n)
-  y10 = g(cbind(1, c)) * m0 + 2 * rnorm(n)
-  y11 = g(cbind(1, c)) * m1 + 2 * rnorm(n)
+  # y = g(matx) * m + Ysigma * z where Ysigma = 2.0 and z ~ N(0,1) and matx = cbind(z, x)
+  y00 = g(cbind(0, x)) * m0 + 2 * rnorm(n)
+  y10 = g(cbind(1, x)) * m0 + 2 * rnorm(n)
+  y11 = g(cbind(1, x)) * m1 + 2 * rnorm(n)
   y = ifelse(z==1,y11,y00)
   
   # test BART with token run to ensure installation works
-  BARTfit = rBARTmediation(y,m,z,c,Uindex=u0,nskip=5,ndpost=5)
-  BARTfitPRED = predict(BARTfit, c, u0)
+  BARTfit = rBARTmediation(y,m,z,x,u0,nskip=5,ndpost=5)
+  BARTfitPRED = predict(BARTfit,x,u0)
 
   \dontrun{
     # run BART
-    BARTfit = rBARTmediation(y,m,z,c,Uindex=u0)
-    BARTfitPRED = predict(BARTfit,c,u0)
+    BARTfit = rBARTmediation(y,m,z,x,u0)
+    BARTfitPRED = predict(BARTfit,x,u0)
   }
 }
 \keyword{nonparametric}

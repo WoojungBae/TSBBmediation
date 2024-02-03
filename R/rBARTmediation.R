@@ -16,8 +16,10 @@
 ## along with this program; if not, a copy is available at
 ## https://www.R-project.org/Licenses/GPL-2
 
-rBARTmediation = function(Y, M, Z, C, 
-                          Uindex=NULL, B_uM=NULL, B_uY=NULL,
+rBARTmediation = function(Y, M, Z, X, Uindex=NULL, 
+                          typeY = "continuous",
+                          typeM = "continuous",
+                          B_uM=NULL, B_uY=NULL,
                           sparse=FALSE, theta=0, omega=1,
                           a=0.5, b=1, augment=FALSE, 
                           matXrho=NULL, matMrho=NULL,
@@ -39,7 +41,7 @@ rBARTmediation = function(Y, M, Z, C,
   # data
   n = length(Y)
   
-  matX = cbind(Z, C)
+  matX = cbind(Z, X)
   matM = cbind(M, matX)
   
   if(length(Uindex)==0){
@@ -154,49 +156,51 @@ rBARTmediation = function(Y, M, Z, C,
   
   # --------------------------------------------------
   ptm <- proc.time()
-  res = .Call("crBARTmediation",
-              n,        # number of observations in training data
-              pm,       # dimension of matX
-              matX,     # pm x n training data matX
-              M,        # 1 x n training data M
-              py,       # dimension of matM
-              matM,     # py x n training data matM
-              Y,        # 1 x n training data Y
-              u0.index,
-              n.j.vec,
-              uM,       # random effects for M, if estimated
-              uY,       # random effects for Y, if estimated
-              J,
-              B_uM,
-              B_uY,
-              ntree,
-              matXnumcut,
-              matMnumcut,
-              ndpost*keepevery,
-              nskip,
-              keepevery,
-              power,
-              base,
-              Moffset,
-              Yoffset,
-              Mtau,
-              Ytau,
-              nu,
-              Mlambda,
-              Ylambda,
-              Msigest,
-              Ysigest,
-              sparse,
-              theta,
-              omega,
-              a,
-              b,
-              matXrho,
-              matMrho,
-              augment,
-              printevery,
-              matXinfo,
-              matMinfo)
+  if(typeY == "continuous" && typeM == "continuous") {
+    res = .Call("crBARTmediation",
+                n,        # number of observations in training data
+                pm,       # dimension of matX
+                matX,     # pm x n training data matX
+                M,        # 1 x n training data M
+                py,       # dimension of matM
+                matM,     # py x n training data matM
+                Y,        # 1 x n training data Y
+                u0.index,
+                n.j.vec,
+                uM,       # random effects for M, if estimated
+                uY,       # random effects for Y, if estimated
+                J,
+                B_uM,
+                B_uY,
+                ntree,
+                matXnumcut,
+                matMnumcut,
+                ndpost*keepevery,
+                nskip,
+                keepevery,
+                power,
+                base,
+                Moffset,
+                Yoffset,
+                Mtau,
+                Ytau,
+                nu,
+                Mlambda,
+                Ylambda,
+                Msigest,
+                Ysigest,
+                sparse,
+                theta,
+                omega,
+                a,
+                b,
+                matXrho,
+                matMrho,
+                augment,
+                printevery,
+                matXinfo,
+                matMinfo)
+  }
   res$proc.time <- proc.time()-ptm
   # --------------------------------------------------
   res$Mdraw.mean <- apply(res$Mdraw, 2, mean)

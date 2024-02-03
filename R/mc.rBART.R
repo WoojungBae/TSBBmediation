@@ -16,8 +16,9 @@
 ## along with this program; if not, a copy is available at
 ## https://www.R-project.org/Licenses/GPL-2
 
-mc.rBART <- function(matX, M,
-                     Uindex=NULL, B_u=NULL,
+mc.rBART <- function(Y, matX, Uindex=NULL, 
+                     typeY = "continuous",
+                     B_u=NULL,
                      sparse=FALSE, theta=0, omega=1,
                      a=0.5, b=1, augment=FALSE, rho=NULL,
                      xinfo=matrix(0,0,0), usequants=FALSE,
@@ -25,7 +26,7 @@ mc.rBART <- function(matX, M,
                      sigest=NA, sigdf=3, sigquant=0.90,
                      k=2, power=2, base=0.95,
                      lambda=NA, tau.num=NA,
-                     offset=mean(M), 
+                     offset=mean(Y), 
                      ntree=200L, numcut=100L,
                      ndpost=1e3, nskip=1e4, keepevery=1e1,
                      printevery = (ndpost*keepevery)/10,
@@ -65,7 +66,8 @@ mc.rBART <- function(matX, M,
   
   for(i in 1:mc.cores) {
     parallel::mcparallel({psnice(value=nice);
-      rBART(matX=matX, M=M,
+      rBART(Y=Y, matX=matX, 
+            typeY = typeY,
             Uindex=Uindex, B_u=B_u,
             sparse=sparse, theta=theta, omega=omega,
             a=a, b=b, augment=augment, rho=rho,

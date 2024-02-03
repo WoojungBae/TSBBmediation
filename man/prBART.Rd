@@ -97,37 +97,37 @@ mc.prBART( x.test, treedraws, mu=0, mc.cores=2L, transposed=FALSE,
 \code{\link{predict.rBART}}
 }
 \examples{
-library(rBARTmediation)
-
-# simulate data (example from Friedman MARS paper)
-f = function(x){
-  10*sin(pi*x[,1]*x[,2]) + 20*(x[,3]-.5)^2+10*x[,4]+5*x[,5]
-}
-
-set.seed(0)
-# number of observations
-n = 1000      
-
-# y = f(x) + sigma * z + u , z ~ N(0,1)
-sigma = 1.0  
-# 10 variables, only first 5 matter
-J = 5
-u = rnorm(J,0,10)
-u0 = sample(1:5, n, replace = TRUE)
-x = matrix(runif(n*10),n,10) 
-Ey = f(x)
-y = Ey + sigma*rnorm(n) + u[u0]
-
-# compare lm fit to BART later
-lmFit = lm(y~.,data.frame(x,y)) 
-
-##test BART with token run to ensure installation works
-bartFit = rBART(x,y,Uindex=u0,nskip=5,ndpost=5)
-
-\dontrun{
-##run BART
-bartFit = rBART(x,y,Uindex=u0)
-}
+  library(rBARTmediation)
+  
+  # simulate data (example from Friedman MARS paper)
+  f = function(matX){
+    10*sin(pi*matX[,1]*matX[,2]) + 20*(matX[,3]-.5)^2+10*matX[,4]+5*matX[,5]
+  }
+  
+  set.seed(0)
+  # number of observations
+  n = 1000      
+  
+  # y = f(matX) + sigma * z + u , z ~ N(0,1)
+  sigma = 1.0  
+  # 10 variables, only first 5 matter
+  J = 5
+  u = rnorm(J,0,10)
+  u0 = sample(1:5, n, replace = TRUE)
+  matX = matrix(runif(n*10),n,10) 
+  Ey = f(matX)
+  y = Ey + sigma*rnorm(n) + u[u0]
+  
+  # compare lm fit to BART later
+  lmFit = lm(y~.,data.frame(matX,y)) 
+  
+  ##test BART with token run to ensure installation works
+  bartFit = rBART(y,matX,Uindex=u0,nskip=5,ndpost=5)
+  
+  \dontrun{
+  ##run BART
+  bartFit = rBART(y,matX,Uindex=u0)
+  }
 }
 \keyword{nonparametric}
 \keyword{tree}
