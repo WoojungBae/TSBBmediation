@@ -16,13 +16,13 @@
 ## along with this program; if not, a copy is available at
 ## https://www.R-project.org/Licenses/GPL-2
 
-prBART = function(x.test,		#x matrix to predict at
-                  treedraws,		#$treedraws from rBART
-                  mu=0,		#mean to add on
-                  mc.cores=1L,         #thread count
+prBART = function(x.test,		    # x matrix to predict at
+                  treedraws,		# $treedraws from rBART
+                  mu=0,		      # mean to add on
+                  mc.cores=1L,  # thread count
                   transposed=FALSE,	
                   dodraws=TRUE,
-                  nice=19L){             #mc.prBART only	
+                  nice=19L){    # mc.prBART only	
   
   p <- length(treedraws$cutpoints)
   
@@ -34,9 +34,9 @@ prBART = function(x.test,		#x matrix to predict at
   }
   
   res = .Call("cprBART",
-              treedraws,	#trees list
-              x.test,      #the test x
-              mc.cores)   	#thread count
+              treedraws,	# trees list
+              x.test,     # the test x
+              mc.cores)   # thread count
   if(dodraws) {
     return(res$yhat.test+mu)
   } else {

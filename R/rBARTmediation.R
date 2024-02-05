@@ -39,6 +39,12 @@ rBARTmediation = function(Y, M, Z, X, Uindex=NULL,
                           mc.cores = 1L, nice = 19L, seed = 99L){
   # --------------------------------------------------
   # data
+  ntypeY = as.integer(factor(typeY, levels = c("continuous", "binary", "multinomial"))) - 1
+  ntypeM = as.integer(factor(typeM, levels = c("continuous", "binary", "multinomial"))) - 1
+  if(is.na(ntypeY) || is.na(ntypeM)){
+    stop("type argument must be set to either 'continuous', 'binary' or 'multinomial'")
+  }
+  
   n = length(Y)
   
   matX = cbind(Z, X)

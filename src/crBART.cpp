@@ -25,20 +25,21 @@
 #include "bartfuns.h"
 #include "bd.h"
 #include "bart.h"
-//#include "heterbart.h"
+#include "heterbart.h"
 #include "rtnorm.h"
 #include "rtgamma.h"
 #include "lambda.h"
 
 #ifndef NoRcpp
 
-#define MDRAW(a, b) mdraw(a, b)
+#define YDRAW(a, b) ydraw(a, b)
 #define UDRAW(a, b) udraw(a, b)
 
-RcppExport SEXP crBART(SEXP _in,      // number of observations in training data
+RcppExport SEXP crBART(SEXP _typeY,   // 1:continuous, 2:binary, 3:multinomial
+                       SEXP _in,      // number of observations in training data
                        SEXP _ip,      // dimension of x
-                       SEXP _imatX,      // x, train, p x n  // (transposed so rows are contiguous in memory)
-                       SEXP _iM,      // y, train, n x 1
+                       SEXP _imatX,   // x, train, p x n  // (transposed so rows are contiguous in memory)
+                       SEXP _iY,      // y, train, n x 1
                        SEXP _iu_index,
                        SEXP _in_j_vec,
                        SEXP _iu,
@@ -65,13 +66,14 @@ RcppExport SEXP crBART(SEXP _in,      // number of observations in training data
                        SEXP _iaug,    // category strategy:  true(1)=data augment 
                        SEXP _inprintevery,
                        SEXP _Xinfo){
-  //process args
+  // process args
+  int typeY = Rcpp::as<int>(_typeY);
   size_t n = Rcpp::as<int>(_in);
   size_t p = Rcpp::as<int>(_ip);
   Rcpp::NumericVector  matXv(_imatX);
   double *imatX = &matXv[0];
-  Rcpp::NumericVector  Mv(_iM); 
-  double *iM = &Mv[0];
+  Rcpp::NumericVector  Yv(_iY); 
+  double *iY = &Yv[0];
   Rcpp::IntegerVector _u_index(_iu_index);
   int *u_index = &_u_index[0];
   Rcpp::IntegerVector _n_j_vec(_in_j_vec);
@@ -112,14 +114,14 @@ RcppExport SEXP crBART(SEXP _in,      // number of observations in training data
   Rcpp::NumericMatrix Xinfo(_Xinfo);
   Rcpp::NumericVector sdraw(numdraw+burn);
   Rcpp::NumericVector sdudraw(numdraw+burn);
-  Rcpp::NumericMatrix mdraw(nkeeptrain,n);
+  Rcpp::NumericMatrix ydraw(nkeeptrain,n);
   Rcpp::NumericMatrix udraw(nkeeptrain,J);
   
   //random number generation
   arn gen;
   
-  //heterbart bm(numtree);
-  bart bm(numtree);
+  heterbart bm(numtree);
+  // bart bm(numtree);
   
   if(Xinfo.size()>0) {
     xinfo _xi;
@@ -132,13 +134,14 @@ RcppExport SEXP crBART(SEXP _in,      // number of observations in training data
   }
 #else
   
-#define MDRAW(a, b) mdraw[a][b]
+#define YDRAW(a, b) ydraw[a][b]
 #define UDRAW(a, b) udraw[a][b]
   
-  void crBART(size_t n,     // number of observations in training data
-              size_t p,	    // dimension of x
-              double* imatX,   // x, train, p x n //(transposed so rows are contiguous in memory)
-              double* iM,   // y, train, n x 1
+  void crBART(int typeY,     // 1:continuous, 2:binary, 3:multinomial
+              size_t n,      // number of observations in training data
+              size_t p,	     // dimension of x
+              double* imatX, // x, train, p x n //(transposed so rows are contiguous in memory)
+              double* iY,    // y, train, n x 1
               int *u_index,
               int *n_j_vec,
               double *u,
@@ -168,16 +171,16 @@ RcppExport SEXP crBART(SEXP _in,      // number of observations in training data
               unsigned int n2,
               double* sdraw,
               double* sdudraw,
-              double* _mdraw,
+              double* _ydraw,
               double* _udraw) {
     //--------------------------------------------------
     //return data structures (using C++)
     size_t nkeeptrain=numdraw/thin, nkeeptreedraws=numdraw/thin;
-    std::vector<double*> mdraw(nkeeptrain);
+    std::vector<double*> ydraw(nkeeptrain);
     std::vector<double*> udraw(nkeeptrain);
     
     for(size_t it=0; it<nkeeptrain; ++it) {
-      mdraw[it]=&_mdraw[it*n];
+      ydraw[it]=&_ydraw[it*n];
       udraw[it]=&_udraw[it*J];
     }
     
@@ -196,7 +199,7 @@ RcppExport SEXP crBART(SEXP _in,      // number of observations in training data
     treess.precision(10);
     treess << nkeeptreedraws << " " << numtree << " " << p << endl;
     
-    printf("*****Calling rBART");
+    printf("*****Calling rBART: typeY=%d\n", typeY);
     
     size_t skiptr=thin, skiptreedraws=thin;
     
@@ -204,7 +207,7 @@ RcppExport SEXP crBART(SEXP _in,      // number of observations in training data
     // print args
     printf("*****Data:\n");
     printf("data:n,p: %zu, %zu\n",n,p);
-    printf("y1,yn: %lf, %lf\n",iM[0],iM[n-1]);
+    printf("y1,yn: %lf, %lf\n",iY[0],iY[n-1]);
     printf("x1,x[n*p]: %lf, %lf\n",imatX[0],imatX[n*p-1]);
     //   if(hotdeck) 
     //printf("warning: missing elements in x multiply imputed with hot decking\n");
@@ -216,7 +219,9 @@ RcppExport SEXP crBART(SEXP _in,      // number of observations in training data
     cout << "*****Prior:beta,alpha,tau,nu,lambda,offset: " 
          << mybeta << ',' << alpha << ',' << tau << ',' 
          << nu << ',' << lambda << ',' << Offset << endl;
-    printf("*****sigma: %lf\n",sigma);
+    if(typeY==1) {
+      printf("*****sigma: %lf\n",sigma);
+    }
     cout << "*****Dirichlet:sparse,theta,omega,a,b,rho,augment: " 
          << dart << ',' << theta << ',' << omega << ',' << a << ',' 
          << b << ',' << rho << ',' << aug << endl;
@@ -226,8 +231,23 @@ RcppExport SEXP crBART(SEXP _in,      // number of observations in training data
     //create temporaries
     double df = n + nu;
     double *z = new double[n]; 
+    double *svec = new double[n]; 
+    double *sign;
+    if(typeY!=1) sign = new double[n]; 
     for(size_t i=0; i<n; i++) {
-      z[i]=iM[i]-Offset; 
+      if(typeY==1) {
+        svec[i] = 1.*sigma; 
+        z[i]=iY[i]-Offset; 
+      }
+      else {
+        svec[i] = 1.;
+        if(iY[i]==0) {
+          sign[i] = -1.;
+        } else {
+          sign[i] = 1.;
+        }
+        z[i] = sign[i];
+      }
     }
     
     // double *u = new double[J]; 
@@ -253,7 +273,7 @@ RcppExport SEXP crBART(SEXP _in,      // number of observations in training data
     printf("\nMCMC\n");
     // size_t index;
     size_t trcnt=0; // count kept train draws
-    bool keeptreedraw,type1sigest=(lambda!=0.);
+    bool keeptreedraw, type1sigest=(typeY==1 && lambda!=0.);
     
     time_t tp;
     int time1 = time(&tp), total=numdraw+burn;
@@ -262,15 +282,30 @@ RcppExport SEXP crBART(SEXP _in,      // number of observations in training data
     for(size_t postrep=0;postrep<total;postrep++) {
       if(postrep%printevery==0) printf("done %zu (out of %lu)\n",postrep,numdraw+burn);
       if(postrep==(burn/2)&&dart) bm.startdart();
-      for(size_t i=0;i<n;i++) z[i]=iM[i]-Offset-u[u_index[i]]; 
-      bm.draw(sigma,gen);
+      //--------------------------------------------------
+      // draw bart
+      bm.draw(svec,gen);
+      
+      //--------------------------------------------------
+      for(size_t i=0;i<n;i++) {
+        if(typeY==1){
+          svec[i] = 1.*sigma; 
+          z[i]=iY[i]-Offset-u[u_index[i]]; 
+        } else {
+          z[i]= sign[i]*rtnorm(sign[i]*bm.f(i), -sign[i]*(Offset+u[u_index[i]]), svec[i], gen);
+          if(typeY==3) {
+            svec[i]=sqrt(draw_lambda_i(pow(svec[i], 2.), sign[i]*bm.f(i), 1000, 1, gen));
+          }
+        }
+      }
       
       //--------------------------------------------------
       // draw sigma
       if(type1sigest) {
         double rss=0.;
-        for(size_t i=0;i<n;i++) 
-          rss += pow((iM[i]-Offset-bm.f(i)-u[u_index[i]]), 2.); 
+        for(size_t i=0;i<n;i++) {
+          rss += pow((iY[i]-Offset-bm.f(i)-u[u_index[i]]), 2.); 
+        }
         sigma = sqrt((nu*lambda + rss)/gen.chi_square(df));
         sdraw[postrep]=sigma;
       }
@@ -295,7 +330,7 @@ RcppExport SEXP crBART(SEXP _in,      // number of observations in training data
         mu_u_j=0.;
         sd_u_j=pow(tau_u+n_j*prec, -0.5);
         for(size_t j=0; j<n_j; j++) {
-          mu_u_j += (iM[jj]-Offset-bm.f(jj));
+          mu_u_j += (iY[jj]-Offset-bm.f(jj));
           jj++;
         }
         mu_u_j *= prec*pow(sd_u_j, 2.);
@@ -308,7 +343,7 @@ RcppExport SEXP crBART(SEXP _in,      // number of observations in training data
       if(postrep>=burn) {
         if(nkeeptrain && (((postrep-burn+1) % skiptr) ==0)) {
           for(size_t i=0;i<n;i++) {
-            MDRAW(trcnt,i)=Offset+bm.f(i);
+            YDRAW(trcnt,i)=Offset+bm.f(i);
           }
           for(size_t j=0;j<J;j++) {
             UDRAW(trcnt,j)=u[j];
@@ -341,6 +376,8 @@ RcppExport SEXP crBART(SEXP _in,      // number of observations in training data
     printf("trcnt: %zu\n",trcnt);
     
     delete[] z;
+    delete[] svec;
+    if(typeY!=1) delete[] sign;
     
 #ifndef NoRcpp
     
@@ -348,7 +385,7 @@ RcppExport SEXP crBART(SEXP _in,      // number of observations in training data
     //return list
     Rcpp::List ret;
     if(type1sigest) ret["sigma"]=sdraw;
-    ret["m.draw"]=mdraw;
+    ret["y.draw"]=ydraw;
     ret["varcount"]=varcnt;
     ret["varprob"]=varprb;
     ret["u.draw"]=udraw;

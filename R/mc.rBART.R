@@ -66,9 +66,9 @@ mc.rBART <- function(Y, matX, Uindex=NULL,
   
   for(i in 1:mc.cores) {
     parallel::mcparallel({psnice(value=nice);
-      rBART(Y=Y, matX=matX, 
+      rBART(Y=Y, matX=matX, Uindex=Uindex, 
             typeY = typeY,
-            Uindex=Uindex, B_u=B_u,
+            B_u=B_u,
             sparse=sparse, theta=theta, omega=omega,
             a=a, b=b, augment=augment, rho=rho,
             xinfo=xinfo, usequants=usequants,
@@ -112,7 +112,7 @@ mc.rBART <- function(Y, matX, Uindex=NULL,
     
     for(i in 2:mc.cores) {
       post$hostname[i] <- post.list[[i]]$hostname
-      post$mhat <- rbind(post$mhat, post.list[[i]]$mhat)
+      post$yhat <- rbind(post$yhat, post.list[[i]]$yhat)
       post$sigma <- cbind(post$sigma, post.list[[i]]$sigma)
       post$varcount <- rbind(post$varcount, post.list[[i]]$varcount)
       post$varprob <- rbind(post$varprob, post.list[[i]]$varprob)
@@ -128,8 +128,8 @@ mc.rBART <- function(Y, matX, Uindex=NULL,
           post$proc.time[j] <- post$proc.time[j]+post.list[[i]]$proc.time[j]
     }
     
-    post$an <- apply(post$mhat, 1, function(x) !any(is.nan(x)))
-    post$mhat.mean <- apply(post$mhat[post$an, ], 2, mean)
+    post$an <- apply(post$yhat, 1, function(x) !any(is.nan(x)))
+    post$yhat.mean <- apply(post$yhat[post$an, ], 2, mean)
     post$varcount.mean <- apply(post$varcount, 2, mean)
     post$varprob.mean <- apply(post$varprob, 2, mean)
     
