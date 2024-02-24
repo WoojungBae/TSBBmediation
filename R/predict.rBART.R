@@ -30,21 +30,28 @@ predict.rBART <- function(object, newdata, mc.cores=1, openmp=(mc.cores.openmp()
     mc.cores <- mc.cores.detected
   }
   
-  if(.Platform$OS.type != "unix" || openmp || mc.cores==1) {
-    call <- prBART
-  } else {
-    call <- mc.prBART
-  }
-  
   p <- length(object$treedraws$cutpoints)
   
   if(p!=ncol(newdata)) {
     stop(paste0('The number of columns in newdata must be equal to ', p))
   }
   
-  if(length(object$mu)==0) {
-    object$mu=object$offset
+  if(.Platform$OS.type != "unix" || openmp || mc.cores==1) {
+    call <- prBART
+  } else {
+    call <- mc.prBART
   }
   
-  return(call(newdata, object$treedraws, mc.cores=mc.cores, mu=object$mu, ...))
+  out <- list()
+  out$pred = call(newdata, object$treedraws, mc.cores=mc.cores, 
+                   mu=object$offsetY, ...)
+  if(object$typeY == "continuous"){
+    # 
+  } else if(object$typeY == "binary"){
+    out$prob <- plogis(out$pred)
+  } else if(object$typeY == "multinomial"){
+    
+  }
+  
+  return(out)
 }

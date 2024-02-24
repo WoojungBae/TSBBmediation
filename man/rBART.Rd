@@ -27,8 +27,8 @@ rBART(Y, matX, Uindex=NULL,
       sigest=NA, sigdf=3, sigquant=0.90,
       k=2, power=2, base=0.95,
       lambda=NA, tau.num=NA,
-      offset = mean(Y),
-      ntree=200L, numcut=100L,
+      offsetY = mean(Y),
+      ntree=2000L, numcut=1000L,
       ndpost=1e3, nskip=1e4, keepevery=1e1,
       printevery = (ndpost*keepevery)/10,
       transposed=FALSE, hostname=FALSE,
@@ -44,8 +44,8 @@ mc.rBART(Y, matX, Uindex=NULL,
          sigest=NA, sigdf=3, sigquant=0.90,
          k=2, power=2, base=0.95,
          lambda=NA, tau.num=NA,
-         offset=mean(Y), 
-         ntree=200L, numcut=100L,
+         offsetY=mean(Y), 
+         ntree=2000L, numcut=1000L,
          ndpost=1e3, nskip=1e4, keepevery=1e1,
          printevery = (ndpost*keepevery)/10,
          transposed=FALSE, hostname=FALSE,
@@ -149,11 +149,11 @@ mc.rBART(Y, matX, Uindex=NULL,
   %% \item{tau.interval}{
   %%   The width of the interval to scale the variance for the terminal
   %%   leaf values.  Only used if \eqn{y} is binary.}
-  \item{offset}{ Continous BART operates on Y centered by
-    \code{offset} which defaults to \code{mean(Y)}.  With binary
-    BART, the centering is \eqn{P(Y=1 | matX) = F(f(matX) + offset)} where
-    \code{offset} defaults to \code{F^{-1}(mean(Y))}.  You can use
-    the \code{offset} parameter to over-ride these defaults.
+  \item{offsetY}{ Continous BART operates on Y centered by
+    \code{offsetY} which defaults to \code{mean(Y)}.  With binary
+    BART, the centering is \eqn{P(Y=1 | matX) = F(f(matX) + offsetY)} where
+    \code{offsetY} defaults to \code{F^{-1}(mean(Y))}.  You can use
+    the \code{offsetY} parameter to over-ride these defaults.
   }
   \item{ntree}{
     The number of trees in the sum.

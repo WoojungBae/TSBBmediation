@@ -237,9 +237,8 @@ RcppExport SEXP crBART(SEXP _typeY,   // 1:continuous, 2:binary, 3:multinomial
     for(size_t i=0; i<n; i++) {
       if(typeY==1) {
         svec[i] = 1.*sigma; 
-        z[i]=iY[i]-Offset; 
-      }
-      else {
+        z[i] = iY[i]-Offset; 
+      } else {
         svec[i] = 1.;
         if(iY[i]==0) {
           sign[i] = -1.;
@@ -289,13 +288,13 @@ RcppExport SEXP crBART(SEXP _typeY,   // 1:continuous, 2:binary, 3:multinomial
       //--------------------------------------------------
       for(size_t i=0;i<n;i++) {
         if(typeY==1){
+          // z[i]=iY[i]-(Offset+u[u_index[i]]); 
           svec[i] = 1.*sigma; 
-          z[i]=iY[i]-Offset-u[u_index[i]]; 
+        } else if(typeY==2){
+          // z[i]=sign[i]*rtnorm(sign[i]*bm.f(i), -sign[i]*(Offset+u[u_index[i]]), svec[i], gen);
+          svec[i]=sqrt(draw_lambda_i(pow(svec[i], 2.), sign[i]*(bm.f(i)+Offset+u[u_index[i]]), 1000, 1, gen));
         } else {
-          z[i]= sign[i]*rtnorm(sign[i]*bm.f(i), -sign[i]*(Offset+u[u_index[i]]), svec[i], gen);
-          if(typeY==3) {
-            svec[i]=sqrt(draw_lambda_i(pow(svec[i], 2.), sign[i]*bm.f(i), 1000, 1, gen));
-          }
+          
         }
       }
       
@@ -304,7 +303,7 @@ RcppExport SEXP crBART(SEXP _typeY,   // 1:continuous, 2:binary, 3:multinomial
       if(type1sigest) {
         double rss=0.;
         for(size_t i=0;i<n;i++) {
-          rss += pow((iY[i]-Offset-bm.f(i)-u[u_index[i]]), 2.); 
+          rss += pow((iY[i]-bm.f(i)-(Offset+u[u_index[i]])), 2.); 
         }
         sigma = sqrt((nu*lambda + rss)/gen.chi_square(df));
         sdraw[postrep]=sigma;
@@ -330,7 +329,7 @@ RcppExport SEXP crBART(SEXP _typeY,   // 1:continuous, 2:binary, 3:multinomial
         mu_u_j=0.;
         sd_u_j=pow(tau_u+n_j*prec, -0.5);
         for(size_t j=0; j<n_j; j++) {
-          mu_u_j += (iY[jj]-Offset-bm.f(jj));
+          mu_u_j += (iY[jj]-bm.f(jj)-Offset);
           jj++;
         }
         mu_u_j *= prec*pow(sd_u_j, 2.);
@@ -343,7 +342,7 @@ RcppExport SEXP crBART(SEXP _typeY,   // 1:continuous, 2:binary, 3:multinomial
       if(postrep>=burn) {
         if(nkeeptrain && (((postrep-burn+1) % skiptr) ==0)) {
           for(size_t i=0;i<n;i++) {
-            YDRAW(trcnt,i)=Offset+bm.f(i);
+            YDRAW(trcnt,i)=bm.f(i)+(Offset+u[u_index[i]]);
           }
           for(size_t j=0;j<J;j++) {
             UDRAW(trcnt,j)=u[j];

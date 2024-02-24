@@ -26,44 +26,45 @@ rBART <- function(Y, matX, Uindex=NULL,
                   sigest=NA, sigdf=3, sigquant=0.90,
                   k=2, power=2, base=0.95,
                   lambda=NA, tau.num=NA,
-                  offset = mean(Y),
-                  ntree=200L, numcut=100L,
+                  offsetY = mean(Y),
+                  ntree=2000L, numcut=1000L,
                   ndpost=1e3, nskip=1e4, keepevery=1e1,
                   printevery = (ndpost*keepevery)/10,
                   transposed=FALSE, hostname=FALSE,
                   mc.cores = 1L, nice = 19L, seed = 99L){
   #--------------------------------------------------
   ntypeY <- as.integer(factor(typeY, levels = c("continuous", "binary", "multinomial")))
+  
   if(is.na(ntypeY)){
     stop("typeY argument must be set to either 'continuous', 'binary' or 'multinomial'")
-  } else if(ntypeY == "continuous"){
+  } else if(typeY == "continuous"){
     
-  } else if(ntypeY == "binary"){
+  } else if(typeY == "binary"){
     checkY <- unique(sort(Y))
     if(length(checkY)==2) {
       if(!all(checkY==0:1)) {
         stop('Binary Y must be coded as 0 and 1')
       }
     }
-  } else if(ntypeY == "multinomial"){
+  } else if(typeY == "multinomial"){
     catsY <- unique(sort(Y))
     kY <- length(catsY)
     if(kY<2) {
       stop("there must be at least 2 categories")
     }
-    lY <- length(offset)
+    lY <- length(offsetY)
     if(!(lY %in% c(0, kY))) {
       stop(paste0("length of offsetY argument must be 0 or ", kY))
     }
   }
   
-  if(is.null(offset)) {
-    if(ntypeY == "continuous"){
-      offset <- mean(Y)
-    } else if(ntypeY == "binary"){
-      offset <- qlogis(offset)
-    } else if(ntypeY == "multinomial"){
-      offset <- 0
+  if(is.null(offsetY)) {
+    if(typeY == "continuous"){
+      offsetY <- mean(Y)
+    } else if(typeY == "binary"){
+      offsetY <- qlogis(offsetY)
+    } else if(typeY == "multinomial"){
+      offsetY <- 0
     }
   }
   
@@ -112,7 +113,7 @@ rBART <- function(Y, matX, Uindex=NULL,
   #--------------------------------------------------
   # prior
   nu <- sigdf
-  if(ntypeY == "continuous"){
+  if(typeY == "continuous"){
     if(is.na(lambda)) {
       if(is.na(sigest)) {
         if(p < n) {
@@ -155,57 +156,55 @@ rBART <- function(Y, matX, Uindex=NULL,
   }
   #--------------------------------------------------
   ptm <- proc.time()
-  if(typeY == "continuous") {
-    res <- .Call("crBART",
-                 ntypeY,     # 1:"continuous"; 2:"binary"; 3:"multinomial"
-                 n,         # number of observations in training data
-                 p,         # dimension of x
-                 matX,      # p x n training data matX
-                 Y,         # 1 x n training data Y
-                 c.index,
-                 n.j.vec,
-                 u,         # random effects, if estimated
-                 J,
-                 B_u,
-                 ntree,
-                 numcut,
-                 ndpost*keepevery,
-                 nskip,
-                 keepevery,
-                 power,
-                 base,
-                 offset,
-                 tau,
-                 nu,
-                 lambda,
-                 sigest,
-                 sparse,
-                 theta,
-                 omega,
-                 a,
-                 b,
-                 rho,
-                 augment,
-                 printevery,
-                 xinfo)
-  }
+  res <- .Call("crBART",
+               ntypeY,    # 1:"continuous"; 2:"binary"; 3:"multinomial"
+               n,         # number of observations in training data
+               p,         # dimension of x
+               matX,      # p x n training data matX
+               Y,         # 1 x n training data Y
+               c.index,
+               n.j.vec,
+               u,         # random effects, if estimated
+               J,
+               B_u,
+               ntree,
+               numcut,
+               ndpost*keepevery,
+               nskip,
+               keepevery,
+               power,
+               base,
+               offsetY,
+               tau,
+               nu,
+               lambda,
+               sigest,
+               sparse,
+               theta,
+               omega,
+               a,
+               b,
+               rho,
+               augment,
+               printevery,
+               xinfo)
   res$proc.time <- proc.time()-ptm
   #--------------------------------------------------
   
-  # if(ntypeY == "continuous"){
+  # if(typeY == "continuous"){
   #   
-  # } else if(ntypeY == "binary"){
+  # } else if(typeY == "binary"){
   #   
-  # } else if(ntypeY == "multinomial"){
+  # } else if(typeY == "multinomial"){
   #   
   # }
   
-  if(ntypeY == "continuous"){
+  if(typeY == "continuous"){
     res$yhat.mean <- apply(res$y.draw, 2, mean)
-  } else if(ntypeY == "binary"){
+  } else if(typeY == "binary"){
     res$prob <- plogis(res$y.draw)
     res$prob.mean <- apply(res$prob, 2, mean)
-  } else if(ntypeY == "multinomial"){
+  } else if(typeY == "multinomial"){
     
   }
   
@@ -217,8 +216,8 @@ rBART <- function(Y, matX, Uindex=NULL,
   res$varprob.mean <- apply(res$varprob, 2, mean)
   res$hostname <- hostname
   
-  res$offset <- offset  
-  res$ntypeY <- ntypeY
+  res$offsetY <- offsetY  
+  res$typeY <- typeY
   res$ndpost <- ndpost
   res$rm.const <- rm.const
   res$sigest <- sigest
