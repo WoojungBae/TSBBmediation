@@ -7,7 +7,6 @@ checkLog := $(pkg).Rcheck/00check.log
 rmd := $(wildcard vignettes/*.Rmd)
 vignettes := $(patsubst %.Rmd,%.html,$(rmd))
 
-
 .PHONY: check
 check: $(checkLog)
 
