@@ -19,7 +19,7 @@
 prBARTmediation = function(object,  # object from rBARTmediation
                            X.test,  # matrix X to predict at
                            Uindex){
-
+  
   # --------------------------------------------------
   mc.cores = 1
   
@@ -40,11 +40,12 @@ prBARTmediation = function(object,  # object from rBARTmediation
   
   M0res = .Call("cprBART", object$matXtreedraws, matXz0.test, mc.cores)$yhat.test + object$Moffset
   M1res = .Call("cprBART", object$matXtreedraws, matXz1.test, mc.cores)$yhat.test + object$Moffset
-  for (j in 1:J) {
-    whichUindex = which(Uindex==j)
-    M0res[,whichUindex] = M0res[,whichUindex] + object$uMdraw[,j]
-    M1res[,whichUindex] = M1res[,whichUindex] + object$uMdraw[,j]
-  }
+  # for (j in 1:J) {
+  #   whichUindex = which(Uindex==j)
+  #   Mreff_tmp = rnorm(1)*sqrt(object$uMdraw[,j])
+  #   M0res[,whichUindex] = M0res[,whichUindex] + Mreff_tmp
+  #   M1res[,whichUindex] = M1res[,whichUindex] + Mreff_tmp
+  # }
   M0.test = sapply(1:N, function(i) rnorm(n_MCMC, M0res[,i], object$iMsigest))
   M1.test = sapply(1:N, function(i) rnorm(n_MCMC, M1res[,i], object$iMsigest))
   M0.test = apply(M0.test, 2, mean)
@@ -58,15 +59,13 @@ prBARTmediation = function(object,  # object from rBARTmediation
   Yz0m0res = .Call("cprBART", object$matMtreedraws, matM0z0.test, mc.cores)$yhat.test + object$Yoffset
   Yz1m0res = .Call("cprBART", object$matMtreedraws, matM0z1.test, mc.cores)$yhat.test + object$Yoffset
   Yz1m1res = .Call("cprBART", object$matMtreedraws, matM1z1.test, mc.cores)$yhat.test + object$Yoffset
-  for (j in 1:J) {
-    whichUindex = which(Uindex==j)
-    Yz0m0res[,whichUindex] = Yz0m0res[,whichUindex] + object$uYdraw[,j]
-    Yz1m0res[,whichUindex] = Yz1m0res[,whichUindex] + object$uYdraw[,j]
-    Yz1m1res[,whichUindex] = Yz1m1res[,whichUindex] + object$uYdraw[,j]
-  }
-  # Yz0m0.test = Yz0m0res
-  # Yz1m0.test = Yz1m0res
-  # Yz1m1.test = Yz1m1res
+  # for (j in 1:J) {
+  #   whichUindex = which(Uindex==j)
+  #   Yreff_tmp = rnorm(1)*sqrt(object$uYdraw[,j])
+  #   Yz0m0res[,whichUindex] = Yz0m0res[,whichUindex] + Yreff_tmp
+  #   Yz1m0res[,whichUindex] = Yz1m0res[,whichUindex] + Yreff_tmp
+  #   Yz1m1res[,whichUindex] = Yz1m1res[,whichUindex] + Yreff_tmp
+  # }
   Yz0m0.test = sapply(1:N, function(i) rnorm(n_MCMC, Yz0m0res[,i], object$iYsigest))
   Yz1m0.test = sapply(1:N, function(i) rnorm(n_MCMC, Yz1m0res[,i], object$iYsigest))
   Yz1m1.test = sapply(1:N, function(i) rnorm(n_MCMC, Yz1m1res[,i], object$iYsigest))
