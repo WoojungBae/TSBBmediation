@@ -27,8 +27,8 @@ prBARTmediation = function(object,  # object from rBARTmediation
   z1 = 1
   
   N = nrow(X.test)
-  J = ncol(object$uMdraw)
-  n_MCMC = nrow(object$uMdraw)
+  J = length(unique(Uindex))
+  n_MCMC = length(object$sd.uM)
   
   matXz0.test <- t(bartModelMatrix(cbind(z0,X.test)))
   matXz1.test <- t(bartModelMatrix(cbind(z1,X.test)))
@@ -42,9 +42,11 @@ prBARTmediation = function(object,  # object from rBARTmediation
   M1res = .Call("cprBART", object$matXtreedraws, matXz1.test, mc.cores)$yhat.test + object$Moffset
   for (j in 1:J) {
     whichUindex = which(Uindex==j)
-    Mreff_tmp = rnorm(1)*(object$sd.uM)
-    M0res[,whichUindex] = M0res[,whichUindex] + Mreff_tmp
-    M1res[,whichUindex] = M1res[,whichUindex] + Mreff_tmp
+    if(length(whichUindex)>0){
+      Mreff_tmp = rnorm(1)*(object$sd.uM)
+      M0res[,whichUindex] = M0res[,whichUindex] + Mreff_tmp
+      M1res[,whichUindex] = M1res[,whichUindex] + Mreff_tmp
+    }
   }
   M0.test = sapply(1:N, function(i) rnorm(n_MCMC, M0res[,i], object$iMsigest))
   M1.test = sapply(1:N, function(i) rnorm(n_MCMC, M1res[,i], object$iMsigest))
@@ -61,10 +63,12 @@ prBARTmediation = function(object,  # object from rBARTmediation
   Yz1m1res = .Call("cprBART", object$matMtreedraws, matM1z1.test, mc.cores)$yhat.test + object$Yoffset
   for (j in 1:J) {
     whichUindex = which(Uindex==j)
-    Yreff_tmp = rnorm(1)*(object$sd.uY)
-    Yz0m0res[,whichUindex] = Yz0m0res[,whichUindex] + Yreff_tmp
-    Yz1m0res[,whichUindex] = Yz1m0res[,whichUindex] + Yreff_tmp
-    Yz1m1res[,whichUindex] = Yz1m1res[,whichUindex] + Yreff_tmp
+    if(length(whichUindex)>0){
+      Yreff_tmp = rnorm(1)*(object$sd.uY)
+      Yz0m0res[,whichUindex] = Yz0m0res[,whichUindex] + Yreff_tmp
+      Yz1m0res[,whichUindex] = Yz1m0res[,whichUindex] + Yreff_tmp
+      Yz1m1res[,whichUindex] = Yz1m1res[,whichUindex] + Yreff_tmp
+    }
   }
   Yz0m0.test = Yz0m0res
   Yz1m0.test = Yz1m0res
