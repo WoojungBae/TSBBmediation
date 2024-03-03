@@ -42,7 +42,7 @@ prBARTmediation = function(object,  # object from rBARTmediation
   M1res = .Call("cprBART", object$matXtreedraws, matXz1.test, mc.cores)$yhat.test + object$Moffset
   for (j in 1:J) {
     whichUindex = which(Uindex==j)
-    Mreff_tmp = rnorm(1)*sqrt(object$sd.uM)
+    Mreff_tmp = rnorm(1)*(object$sd.uM)
     M0res[,whichUindex] = M0res[,whichUindex] + Mreff_tmp
     M1res[,whichUindex] = M1res[,whichUindex] + Mreff_tmp
   }
@@ -61,7 +61,7 @@ prBARTmediation = function(object,  # object from rBARTmediation
   Yz1m1res = .Call("cprBART", object$matMtreedraws, matM1z1.test, mc.cores)$yhat.test + object$Yoffset
   for (j in 1:J) {
     whichUindex = which(Uindex==j)
-    Yreff_tmp = rnorm(1)*sqrt(object$sd.uY)
+    Yreff_tmp = rnorm(1)*(object$sd.uY)
     Yz0m0res[,whichUindex] = Yz0m0res[,whichUindex] + Yreff_tmp
     Yz1m0res[,whichUindex] = Yz1m0res[,whichUindex] + Yreff_tmp
     Yz1m1res[,whichUindex] = Yz1m1res[,whichUindex] + Yreff_tmp
