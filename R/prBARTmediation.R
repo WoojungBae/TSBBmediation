@@ -19,7 +19,6 @@
 prBARTmediation = function(object,  # object from rBARTmediation
                            X.test,  # matrix X to predict at
                            Uindex){
-  
   # --------------------------------------------------
   mc.cores = 1
   
@@ -27,8 +26,8 @@ prBARTmediation = function(object,  # object from rBARTmediation
   z1 = 1
   
   N = nrow(X.test)
-  J = length(unique(Uindex))
-  n_MCMC = length(object$sd.uM)
+  J = ncol(object$uMdraw)
+  n_MCMC = nrow(object$uMdraw)
   
   matXz0.test <- t(bartModelMatrix(cbind(z0,X.test)))
   matXz1.test <- t(bartModelMatrix(cbind(z1,X.test)))
@@ -43,7 +42,8 @@ prBARTmediation = function(object,  # object from rBARTmediation
   for (j in 1:J) {
     whichUindex = which(Uindex==j)
     if(length(whichUindex)>0){
-      Mreff_tmp = rnorm(1)*(object$sd.uM)
+      # Mreff_tmp = rnorm(1)*(object$sd.uM)
+      Mreff_tmp = object$uMdraw[,j]
       M0res[,whichUindex] = M0res[,whichUindex] + Mreff_tmp
       M1res[,whichUindex] = M1res[,whichUindex] + Mreff_tmp
     }
@@ -64,18 +64,16 @@ prBARTmediation = function(object,  # object from rBARTmediation
   for (j in 1:J) {
     whichUindex = which(Uindex==j)
     if(length(whichUindex)>0){
-      Yreff_tmp = rnorm(1)*(object$sd.uY)
+      # Yreff_tmp = rnorm(1)*(object$sd.uY)
+      Yreff_tmp = object$uYdraw[,j]
       Yz0m0res[,whichUindex] = Yz0m0res[,whichUindex] + Yreff_tmp
       Yz1m0res[,whichUindex] = Yz1m0res[,whichUindex] + Yreff_tmp
       Yz1m1res[,whichUindex] = Yz1m1res[,whichUindex] + Yreff_tmp
     }
   }
-  Yz0m0.test = Yz0m0res
-  Yz1m0.test = Yz1m0res
-  Yz1m1.test = Yz1m1res
-  # Yz0m0.test = sapply(1:N, function(i) rnorm(n_MCMC, Yz0m0res[,i], object$iYsigest))
-  # Yz1m0.test = sapply(1:N, function(i) rnorm(n_MCMC, Yz1m0res[,i], object$iYsigest))
-  # Yz1m1.test = sapply(1:N, function(i) rnorm(n_MCMC, Yz1m1res[,i], object$iYsigest))
+  Yz0m0.test = sapply(1:N, function(i) rnorm(n_MCMC, Yz0m0res[,i], object$iYsigest))
+  Yz1m0.test = sapply(1:N, function(i) rnorm(n_MCMC, Yz1m0res[,i], object$iYsigest))
+  Yz1m1.test = sapply(1:N, function(i) rnorm(n_MCMC, Yz1m1res[,i], object$iYsigest))
   
   return(list(Yz0m0.test=Yz0m0.test,
               Yz1m0.test=Yz1m0.test,
