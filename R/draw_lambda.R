@@ -17,5 +17,6 @@
 ## along with this program; if not, a copy is available at
 ## https://www.R-project.org/Licenses/GPL-2
 
-draw_lambda=function(lambda, mean, kmax=1000, thin=1)
-    .Call("cdraw_lambda", lambda, mean, kmax, thin)
+draw_lambda = function(lambda, mean, kmax=1000, thin=1){
+  .Call("cdraw_lambda", lambda, mean, kmax, thin)
+}
