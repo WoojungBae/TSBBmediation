@@ -47,7 +47,7 @@ small amount to the overall fit.
   \code{\link{prBARTmediation}}
 }
 \examples{
-  library(rBARTmediation)
+  library(TSBBmediation)
   
   # simulate data (example from Friedman MARS paper)
   f = function(x){

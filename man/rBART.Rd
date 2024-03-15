@@ -290,7 +290,7 @@ Linero, A.R. (2018)
   \code{\link{prBART}}
 }
 \examples{
-  library(rBARTmediation)
+  library(TSBBmediation)
   
   # simulate data (example from Friedman MARS paper)
   f = function(matX){

@@ -258,7 +258,7 @@ rBARTmediation(Y, M, Z, X, Uindex=NULL,
   \code{\link{rBART}}
 }
 \examples{
-  library(rBARTmediation)
+  library(TSBBmediation)
   
   # simulate data (example from Friedman MARS paper)
   f = function(x){

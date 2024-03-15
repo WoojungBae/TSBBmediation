@@ -90,7 +90,7 @@ small amount to the overall fit.
   \code{\link{mc.cores.openmp}}
 }
 \examples{
-  library(rBARTmediation)
+  library(TSBBmediation)
   
   # simulate data (example from Friedman MARS paper)
   f = function(matX){

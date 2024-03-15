@@ -48,7 +48,7 @@ prBARTmediation(object,   # object from rBARTmediation
   \code{\link{predict.rBARTmediation}}
 }
 \examples{
-  library(rBARTmediation)
+  library(TSBBmediation)
   
   # simulate data (example from Friedman MARS paper)
   f = function(x){

@@ -1,4 +1,4 @@
-useDynLib('rBARTmediation', .registration=TRUE)
+useDynLib('TSBBmediation', .registration=TRUE)
 ##exportPattern("^[[:alpha:]]+")
 export(rBARTmediation)
 export(rBART, mc.rBART)

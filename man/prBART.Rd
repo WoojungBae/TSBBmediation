@@ -97,7 +97,7 @@ mc.prBART( x.test, treedraws, mu=0, mc.cores=2L, transposed=FALSE,
 \code{\link{predict.rBART}}
 }
 \examples{
-  library(rBARTmediation)
+  library(TSBBmediation)
   
   # simulate data (example from Friedman MARS paper)
   f = function(matX){

@@ -1,6 +1,6 @@
-Package: rBARTmediation
+Package: TSBBmediation
 Type: Package
-Title: Mediation analysis using Bayesian Additive Regression Trees (BART) with random effects
+Title: Mediation analysis using Two-Stage Bayesian Bootstrapping (TSBB)
 Version: 4.3.2
 Date: 2024-01-01
 Authors@R: c(person('Woojung', 'Bae', role=c('aut', 'cre'), email='matt.woojung@gmail.com'),
@@ -8,7 +8,7 @@ Authors@R: c(person('Woojung', 'Bae', role=c('aut', 'cre'), email='matt.woojung@
 Author: Woojung Bae [aut, cre],
   Michael Daniels [aut]
 Maintainer: Woojung Bae <matt.woojung@gmail.com>
-Description: Mediation analysis using Bayesian Additive Regression Trees (BART) with random effects.
+Description: Mediation analysis using Two-Stage Bayesian Bootstrapping (TSBB).
 License: GPL (>= 2)
 Depends: R (>= 2.10), nlme, nnet
 Imports: Rcpp (>= 0.12.3), parallel, tools
