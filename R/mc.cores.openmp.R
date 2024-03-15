@@ -16,4 +16,6 @@
 ## along with this program; if not, a copy is available at
 ## https://www.R-project.org/Licenses/GPL-2
 
-mc.cores.openmp=function() .Call("mc_cores_openmp")
+mc.cores.openmp = function() {
+  .Call("mc_cores_openmp")
+} 
