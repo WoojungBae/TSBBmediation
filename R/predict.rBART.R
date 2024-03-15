@@ -50,7 +50,7 @@ predict.rBART <- function(object, newdata, mc.cores=1, openmp=(mc.cores.openmp()
   } else if(object$typeY == "binary"){
     out$prob <- plogis(out$pred)
   } else if(object$typeY == "multinomial"){
-    
+    # 
   }
   
   return(out)
