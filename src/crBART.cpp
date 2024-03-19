@@ -120,8 +120,8 @@ RcppExport SEXP crBART(SEXP _typeY,   // 1:continuous, 2:binary, 3:multinomial
   //random number generation
   arn gen;
   
-  heterbart bm(numtree);
-  // bart bm(numtree);
+  // heterbart bm(numtree);
+  bart bm(numtree);
   
   if(Xinfo.size()>0) {
     xinfo _xi;
@@ -231,15 +231,15 @@ RcppExport SEXP crBART(SEXP _typeY,   // 1:continuous, 2:binary, 3:multinomial
     //create temporaries
     double df = n + nu;
     double *z = new double[n]; 
-    double *svec = new double[n]; 
+    // double *svec = new double[n]; 
     double *sign;
     if(typeY!=1) sign = new double[n]; 
     for(size_t i=0; i<n; i++) {
       if(typeY==1) {
-        svec[i] = 1.*sigma; 
+        // svec[i] = 1.;
+        // svec[i] = sigma; 
         z[i] = iY[i]-Offset; 
       } else {
-        svec[i] = 1.;
         if(iY[i]==0) {
           sign[i] = -1.;
         } else {
@@ -283,17 +283,18 @@ RcppExport SEXP crBART(SEXP _typeY,   // 1:continuous, 2:binary, 3:multinomial
       if(postrep==(burn/2)&&dart) bm.startdart();
       //--------------------------------------------------
       // draw bart
-      bm.draw(svec,gen);
+      // bm.draw(svec,gen);
+      bm.draw(sigma,gen);
       
       //--------------------------------------------------
       for(size_t i=0;i<n;i++) {
         if(typeY==1){
-          // z[i]=iY[i]-(Offset+u[u_index[i]]); 
-          svec[i] = 1.*sigma; 
+          z[i] = iY[i] - (Offset+u[u_index[i]]);
+          // svec[i] = 1.*sigma; 
         } else if(typeY==2){
-          // z[i]=sign[i]*rtnorm(sign[i]*bm.f(i), -sign[i]*(Offset+u[u_index[i]]), svec[i], gen);
-          svec[i]=sqrt(draw_lambda_i(pow(svec[i], 2.), sign[i]*(bm.f(i)+Offset+u[u_index[i]]), 1000, 1, gen));
-        } else {
+          z[i] = sign[i] * rtnorm(sign[i]*bm.f(i), -sign[i]*(Offset+u[u_index[i]]), sigma, gen);
+          // svec[i]=sqrt(draw_lambda_i(pow(svec[i], 2.), sign[i]*(bm.f(i)+Offset+u[u_index[i]]), 1000, 1, gen));
+        } else if(typeY==3){
           
         }
       }
@@ -316,7 +317,7 @@ RcppExport SEXP crBART(SEXP _typeY,   // 1:continuous, 2:binary, 3:multinomial
       for(size_t j=0; j<J; j++) {
         sum_u2 += pow(u[j], 2.);
       }
-      tau_u=rtgamma(0.5*(J-1.), 0.5*sum_u2, invB2, gen); 
+      tau_u = rtgamma(0.5*(J-1.), 0.5*sum_u2, invB2, gen); 
       
       //--------------------------------------------------
       // draw u
@@ -375,7 +376,8 @@ RcppExport SEXP crBART(SEXP _typeY,   // 1:continuous, 2:binary, 3:multinomial
     printf("trcnt: %zu\n",trcnt);
     
     delete[] z;
-    delete[] svec;
+    // delete[] svec;
+    // delete[] u;
     if(typeY!=1) delete[] sign;
     
 #ifndef NoRcpp

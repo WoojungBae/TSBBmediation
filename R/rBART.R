@@ -62,7 +62,8 @@ rBART <- function(Y, matX, Uindex=NULL,
     if(typeY == "continuous"){
       offsetY <- mean(Y)
     } else if(typeY == "binary"){
-      offsetY <- qlogis(offsetY)
+      offsetY <- qnorm(offsetY)
+      # offsetY <- qlogis(offsetY)
     } else if(typeY == "multinomial"){
       offsetY <- 0
     }
@@ -72,8 +73,9 @@ rBART <- function(Y, matX, Uindex=NULL,
   # data
   n <- length(Y)
   
-  if(length(Uindex)==0)
+  if(length(Uindex)==0) {
     stop("the random effects indices must be provided")
+  }
   
   c.index <- integer(n) ## changing from R/arbitrary indexing to C/0
   u.index <- unique(Uindex)
@@ -141,6 +143,7 @@ rBART <- function(Y, matX, Uindex=NULL,
   } else {
     lambda <- 1
     sigest <- 1
+    tau.num <- 3 # default value of BART package ("pbart")
     tau <- tau.num/(k*sqrt(ntree))
   }
   
@@ -202,7 +205,8 @@ rBART <- function(Y, matX, Uindex=NULL,
   if(typeY == "continuous"){
     res$yhat.mean <- apply(res$y.draw, 2, mean)
   } else if(typeY == "binary"){
-    res$prob <- plogis(res$y.draw)
+    res$prob <- pnorm(res$y.draw)
+    # res$prob <- plogis(res$y.draw)
     res$prob.mean <- apply(res$prob, 2, mean)
   } else if(typeY == "multinomial"){
     
