@@ -48,7 +48,7 @@ predict.rBART <- function(object, newdata, mc.cores=1, openmp=(mc.cores.openmp()
   if(object$typeY == "continuous"){
     # 
   } else if(object$typeY == "binary"){
-    out$prob <- plogis(out$pred)
+    out$prob <- pnorm(out$pred)
   } else if(object$typeY == "multinomial"){
     # 
   }
