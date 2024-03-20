@@ -89,9 +89,9 @@ prBARTmediation = function(object,  # object from rBARTmediation
     Yz0m0.test = pnorm(Yz0m0res)
     Yz1m0.test = pnorm(Yz1m0res)
     Yz1m1.test = pnorm(Yz1m1res)
-    Yz0m0.test = sapply(1:N, function(i) rbinom(n_MCMC, 1, Yz0m0res[,i]))
-    Yz1m0.test = sapply(1:N, function(i) rbinom(n_MCMC, 1, Yz1m0res[,i]))
-    Yz1m1.test = sapply(1:N, function(i) rbinom(n_MCMC, 1, Yz1m1res[,i]))
+    Yz0m0.test = sapply(1:N, function(i) rbinom(n_MCMC, 1, Yz0m0.test[,i]))
+    Yz1m0.test = sapply(1:N, function(i) rbinom(n_MCMC, 1, Yz1m0.test[,i]))
+    Yz1m1.test = sapply(1:N, function(i) rbinom(n_MCMC, 1, Yz1m1.test[,i]))
   } else if(object$typeY == "multinomial"){
     #
   }
