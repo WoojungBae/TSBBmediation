@@ -39,12 +39,12 @@ predict.rBART <- function(object, newdata, mc.cores=1, openmp=(mc.cores.openmp()
   if(.Platform$OS.type != "unix" || openmp || mc.cores==1) {
     call <- prBART
   } else {
-    call <- mc.prBART
+    call <- prBART
   }
   
   out <- list()
   out$pred = call(newdata, object$treedraws, mc.cores=mc.cores, 
-                   mu=object$offsetY, ...)
+                  mu=object$offsetY, ...)
   if(object$typeY == "continuous"){
     # 
   } else if(object$typeY == "binary"){

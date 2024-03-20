@@ -37,7 +37,9 @@
 #define UMDRAW(a, b) uMdraw(a, b)
 #define UYDRAW(a, b) uYdraw(a, b)
 
-RcppExport SEXP crBARTmediation(SEXP _in,      // number of observations in training data
+RcppExport SEXP crBARTmediation(SEXP _typeM,   // 1:continuous, 2:binary, 3:multinomial
+                                SEXP _typeY,   // 1:continuous, 2:binary, 3:multinomial
+                                SEXP _in,      // number of observations in training data
                                 SEXP _ipm,     // dimension of matX
                                 SEXP _imatX,   // matX, train, pm x n  // (transposed so rows are contiguous in memory)
                                 SEXP _iM,      // M, train, n x 1
@@ -80,6 +82,8 @@ RcppExport SEXP crBARTmediation(SEXP _in,      // number of observations in trai
                                 SEXP _matXinfo,
                                 SEXP _matMinfo){
   //process args
+  int typeM = Rcpp::as<int>(_typeM);
+  int typeY = Rcpp::as<int>(_typeY);
   size_t n = Rcpp::as<int>(_in);
   size_t pm = Rcpp::as<int>(_ipm);
   Rcpp::NumericVector matXv(_imatX);
@@ -186,7 +190,9 @@ RcppExport SEXP crBARTmediation(SEXP _in,      // number of observations in trai
 #define UMDRAW(a, b) uMdraw[a][b]
 #define UYDRAW(a, b) uYdraw[a][b]
   
-  void crBARTmediation(size_t n,      // number of observations in training data
+  void crBARTmediation(int typeM,     // 1:continuous, 2:binary, 3:multinomial
+                       int typeY,     // 1:continuous, 2:binary, 3:multinomial
+                       size_t n,      // number of observations in training data
                        size_t pm,	    // dimension of matX
                        double* imatX, // matX, train, pm x n //(transposed so rows are contiguous in memory)
                        double* iM,    // M, train, n x 1
@@ -274,7 +280,8 @@ RcppExport SEXP crBARTmediation(SEXP _in,      // number of observations in trai
     matMtreess.precision(10);
     matMtreess << nkeeptreedraws << " " << numtree << " " << py << endl;
     
-    printf("*****Calling rBARTmediation");
+    printf("*****Calling rBARTmediation: typeM=%d\n", typeM);
+    printf("*****Calling rBARTmediation: typeY=%d\n", typeY);
     
     size_t skiptr=thin, skiptreedraws=thin;
     
@@ -313,9 +320,29 @@ RcppExport SEXP crBARTmediation(SEXP _in,      // number of observations in trai
     double df = n + nu;
     double *Mz = new double[n]; 
     double *Yz = new double[n]; 
+    double *Msign; if(typeM!=1) Msign = new double[n]; 
+    double *Ysign; if(typeY!=1) Ysign = new double[n]; 
     for(size_t i=0; i<n; i++) {
-      Mz[i]=iM[i]-MOffset; 
-      Yz[i]=iY[i]-YOffset; 
+      if(typeM==1) {
+        Mz[i]=iM[i]-MOffset; 
+      } else {
+        if(iM[i]==0) {
+          Msign[i] = -1.;
+        } else {
+          Msign[i] = 1.;
+        }
+        Mz[i] = Msign[i];
+      }
+      if(typeY==1) {
+        Yz[i]=iY[i]-YOffset;
+      } else {
+        if(iY[i]==0) {
+          Ysign[i] = -1.;
+        } else {
+          Ysign[i] = 1.;
+        }
+        Yz[i] = Ysign[i];
+      }
     }
     
     // double *uM = new double[J]; 
@@ -350,7 +377,7 @@ RcppExport SEXP crBARTmediation(SEXP _in,      // number of observations in trai
     printf("\nMCMC\n");
     // size_t index;
     size_t trcnt=0; // count kept train draws
-    bool keeptreedraw;
+    bool keeptreedraw, typeM1=(typeM==1 && Mlambda!=0.), typeY1=(typeY==1 && Ylambda!=0.);
     
     time_t tp;
     int time1 = time(&tp), total=numdraw+burn;
@@ -367,6 +394,20 @@ RcppExport SEXP crBARTmediation(SEXP _in,      // number of observations in trai
       }
       mBM.draw(iMsigest,gen);
       yBM.draw(iYsigest,gen);
+      
+      //--------------------------------------------------
+      for(size_t i=0;i<n;i++) {
+        if(typeM==1){
+          Mz[i] = iM[i] - (MOffset+uM[u_index[i]]);
+        } else if(typeM==2){
+          Mz[i] = Msign[i] * rtnorm(Msign[i]*mBM.f(i), -Msign[i]*(MOffset+uM[u_index[i]]), iMsigest, gen);
+        }
+        if(typeY==1){
+          Yz[i] = iY[i] - (YOffset+uY[u_index[i]]);
+        } else if(typeY==2){
+          Yz[i] = Ysign[i] * rtnorm(Ysign[i]*yBM.f(i), -Ysign[i]*(YOffset+uY[u_index[i]]), iYsigest, gen);
+        }
+      }
       
       //--------------------------------------------------
       // draw iMsigest and iYsigest
@@ -477,15 +518,21 @@ RcppExport SEXP crBARTmediation(SEXP _in,      // number of observations in trai
     printf("time: %ds\n",time2-time1);
     printf("trcnt: %zu\n",trcnt);
     
+    delete[] Mz;
+    delete[] Yz;
+    if(typeM!=1) delete[] Msign;
+    if(typeY!=1) delete[] Ysign;
+    
 #ifndef NoRcpp
     
     //--------------------------------------------------
     //return list
     Rcpp::List ret;
-    ret["Mdraw"]=Mdraw;
-    ret["Ydraw"]=Ydraw;
+    
     ret["iMsigest"]=Msdraw;
     ret["iYsigest"]=Ysdraw;
+    ret["Mdraw"]=Mdraw;
+    ret["Ydraw"]=Ydraw;
     ret["uMdraw"]=uMdraw;
     ret["uYdraw"]=uYdraw;
     ret["sd.uM"]=Msdudraw;

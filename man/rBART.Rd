@@ -33,23 +33,6 @@ rBART(Y, matX, Uindex=NULL,
       printevery = (ndpost*keepevery)/10,
       transposed=FALSE, hostname=FALSE,
       mc.cores = 1L, nice = 19L, seed = 99L)
-
-mc.rBART(Y, matX, Uindex=NULL, 
-         typeY = "continuous",
-         B_u=NULL,
-         sparse=FALSE, theta=0, omega=1,
-         a=0.5, b=1, augment=FALSE, rho=NULL,
-         xinfo=matrix(0,0,0), usequants=FALSE,
-         rm.const=TRUE,
-         sigest=NA, sigdf=3, sigquant=0.90,
-         k=2, power=2, base=0.95,
-         lambda=NA, tau.num=NA,
-         offsetY=mean(Y), 
-         ntree=200L, numcut=100L,
-         ndpost=1e3, nskip=1e4, keepevery=1e1,
-         printevery = (ndpost*keepevery)/10,
-         transposed=FALSE, hostname=FALSE,
-         mc.cores = 1L, nice = 19L, seed = 99L)
 }
 
 \arguments{

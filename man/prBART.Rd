@@ -1,7 +1,6 @@
 \name{prBART}
 \title{Predicting new observations with a previously fitted BART model}
 \alias{prBART}
-\alias{mc.prBART}
 \description{
 BART is a Bayesian \dQuote{sum-of-trees} model.\cr
 For a numeric response \eqn{y}, we have
@@ -22,11 +21,6 @@ prBART( x.test, treedraws, mu=0, mc.cores=1L, transposed=FALSE,
         dodraws=TRUE,
         nice=19L ## mc.prBART only
       )
-
-mc.prBART( x.test, treedraws, mu=0, mc.cores=2L, transposed=FALSE,
-           dodraws=TRUE,
-           nice=19L ## mc.prBART only
-         )
 }
 \arguments{
    \item{x.test}{

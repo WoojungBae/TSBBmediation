@@ -82,11 +82,11 @@ small amount to the overall fit.
 %% Rodney Sparapani: \email{rsparapa@mcw.edu}.
 %% }
 \seealso{
-  \code{\link{rBART}}, \code{\link{mc.rBART}},
+  \code{\link{rBART}}, % \code{\link{mc.rBART}},
 %  \code{\link{pbart}}, \code{\link{mc.pbart}},
 %  \code{\link{lbart}}, \code{\link{mc.lbart}},
 %  \code{\link{mbart}}, \code{\link{mc.mbart}},
-  \code{\link{prBART}}, \code{\link{mc.prBART}},
+  \code{\link{prBART}} % , \code{\link{mc.prBART}},
   \code{\link{mc.cores.openmp}}
 }
 \examples{

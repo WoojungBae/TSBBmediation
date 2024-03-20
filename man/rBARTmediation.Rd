@@ -1,7 +1,6 @@
 \name{rBARTmediation}
 \title{Mediation Analysis using Generalized BART Mixed Model for continuous outcomes}
 \alias{rBARTmediation}
-\alias{mc.rBARTmediation}
 \description{
 BART is a Bayesian \dQuote{sum-of-trees} model.\cr
 For a numeric response \eqn{m}, we have
@@ -171,8 +170,7 @@ rBARTmediation(Y, M, Z, X, Uindex=NULL,
   \item{printevery}{As the MCMC runs, a message is printed every printevery draws.}
   \item{keepevery}{Every keepevery draw is kept to be returned to the user.}
   \item{transposed}{When running \code{rBARTmediation} in parallel, it is more memory-efficient
-    to transpose X and X.test, if any, prior to
-    calling \code{mc.rBARTmediation}.}
+    to transpose X and X.test.}
   \item{hostname}{When running on a cluster occasionally it is useful
     to track on which node each chain is running; to do so
     set this argument to \code{TRUE}.}

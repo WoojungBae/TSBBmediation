@@ -48,10 +48,19 @@ prBARTmediation = function(object,  # object from rBARTmediation
       M1res[,whichUindex] = M1res[,whichUindex] + Mreff_tmp
     }
   }
-  M0.test = sapply(1:N, function(i) rnorm(n_MCMC, M0res[,i], object$iMsigest))
-  M1.test = sapply(1:N, function(i) rnorm(n_MCMC, M1res[,i], object$iMsigest))
-  M0.test = apply(M0.test, 2, mean)
-  M1.test = apply(M1.test, 2, mean)
+  if(object$typeM == "continuous"){
+    M0.test = apply(M0res, 2, mean)
+    M1.test = apply(M1res, 2, mean)
+    M0.test = rnorm(n_MCMC, M0.test, object$iMsigest)
+    M1.test = rnorm(n_MCMC, M1.test, object$iMsigest)
+  } else if(object$typeM == "binary"){
+    M0.test = apply(pnorm(M0res), 2, mean)
+    M1.test = apply(pnorm(M1res), 2, mean)
+    M0.test = rbinom(n_MCMC, 1, M0.test)
+    M1.test = rbinom(n_MCMC, 1, M1.test)
+  } else if(object$typeM == "multinomial"){
+    #
+  }
   
   # --------------------------------------------------
   matM0z0.test = rbind(M0.test,matXz0.test)
@@ -71,9 +80,21 @@ prBARTmediation = function(object,  # object from rBARTmediation
       Yz1m1res[,whichUindex] = Yz1m1res[,whichUindex] + Yreff_tmp
     }
   }
-  Yz0m0.test = sapply(1:N, function(i) rnorm(n_MCMC, Yz0m0res[,i], object$iYsigest))
-  Yz1m0.test = sapply(1:N, function(i) rnorm(n_MCMC, Yz1m0res[,i], object$iYsigest))
-  Yz1m1.test = sapply(1:N, function(i) rnorm(n_MCMC, Yz1m1res[,i], object$iYsigest))
+  
+  if(object$typeY == "continuous"){
+    Yz0m0.test = sapply(1:N, function(i) rnorm(n_MCMC, Yz0m0res[,i], object$iYsigest))
+    Yz1m0.test = sapply(1:N, function(i) rnorm(n_MCMC, Yz1m0res[,i], object$iYsigest))
+    Yz1m1.test = sapply(1:N, function(i) rnorm(n_MCMC, Yz1m1res[,i], object$iYsigest))
+  } else if(object$typeY == "binary"){
+    Yz0m0.test = pnorm(Yz0m0res)
+    Yz1m0.test = pnorm(Yz1m0res)
+    Yz1m1.test = pnorm(Yz1m1res)
+    Yz0m0.test = sapply(1:N, function(i) rbinom(n_MCMC, 1, Yz0m0res[,i]))
+    Yz1m0.test = sapply(1:N, function(i) rbinom(n_MCMC, 1, Yz1m0res[,i]))
+    Yz1m1.test = sapply(1:N, function(i) rbinom(n_MCMC, 1, Yz1m1res[,i]))
+  } else if(object$typeY == "multinomial"){
+    #
+  }
   
   return(list(Yz0m0.test=Yz0m0.test,
               Yz1m0.test=Yz1m0.test,

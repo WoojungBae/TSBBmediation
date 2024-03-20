@@ -162,51 +162,51 @@ rBARTmediation = function(Y, M, Z, X, Uindex=NULL,
   
   # --------------------------------------------------
   ptm <- proc.time()
-  if(typeY == "continuous" && typeM == "continuous") {
-    res = .Call("crBARTmediation",
-                n,        # number of observations in training data
-                pm,       # dimension of matX
-                matX,     # pm x n training data matX
-                M,        # 1 x n training data M
-                py,       # dimension of matM
-                matM,     # py x n training data matM
-                Y,        # 1 x n training data Y
-                u0.index,
-                n.j.vec,
-                uM,       # random effects for M, if estimated
-                uY,       # random effects for Y, if estimated
-                J,
-                B_uM,
-                B_uY,
-                ntree,
-                matXnumcut,
-                matMnumcut,
-                ndpost*keepevery,
-                nskip,
-                keepevery,
-                power,
-                base,
-                Moffset,
-                Yoffset,
-                Mtau,
-                Ytau,
-                nu,
-                Mlambda,
-                Ylambda,
-                Msigest,
-                Ysigest,
-                sparse,
-                theta,
-                omega,
-                a,
-                b,
-                matXrho,
-                matMrho,
-                augment,
-                printevery,
-                matXinfo,
-                matMinfo)
-  }
+  res = .Call("crBARTmediation",
+              ntypeM,   # 1:continuous, 2:binary, 3:multinomial
+              ntypeY,   # 1:continuous, 2:binary, 3:multinomial
+              n,        # number of observations in training data
+              pm,       # dimension of matX
+              matX,     # pm x n training data matX
+              M,        # 1 x n training data M
+              py,       # dimension of matM
+              matM,     # py x n training data matM
+              Y,        # 1 x n training data Y
+              u0.index,
+              n.j.vec,
+              uM,       # random effects for M, if estimated
+              uY,       # random effects for Y, if estimated
+              J,
+              B_uM,
+              B_uY,
+              ntree,
+              matXnumcut,
+              matMnumcut,
+              ndpost*keepevery,
+              nskip,
+              keepevery,
+              power,
+              base,
+              Moffset,
+              Yoffset,
+              Mtau,
+              Ytau,
+              nu,
+              Mlambda,
+              Ylambda,
+              Msigest,
+              Ysigest,
+              sparse,
+              theta,
+              omega,
+              a,
+              b,
+              matXrho,
+              matMrho,
+              augment,
+              printevery,
+              matXinfo,
+              matMinfo)
   res$proc.time <- proc.time()-ptm
   # --------------------------------------------------
   res$Mdraw.mean <- apply(res$Mdraw, 2, mean)
@@ -223,6 +223,9 @@ rBARTmediation = function(Y, M, Z, X, Uindex=NULL,
   dimnames(res$matMvarprob)[[2]] = as.list(dimnames(matM)[[1]])
   res$matMvarcount.mean <- apply(res$matMvarcount, 2, mean)
   res$matMvarprob.mean <- apply(res$matMvarprob, 2, mean)
+  
+  res$typeM = typeM
+  res$typeY = typeY
   
   res$Moffset = Moffset
   res$Yoffset = Yoffset
