@@ -26,7 +26,7 @@ rBART <- function(Y, matX, Uindex=NULL,
                   sigest=NA, sigdf=3, sigquant=0.90,
                   k=2, power=2, base=0.95,
                   lambda=NA, tau.num=NA,
-                  offsetY = mean(Y),
+                  offsetY = NULL,
                   ntree=200L, numcut=100L,
                   ndpost=1e3, nskip=1e4, keepevery=1e1,
                   printevery = (ndpost*keepevery)/10,
@@ -52,21 +52,19 @@ rBART <- function(Y, matX, Uindex=NULL,
     if(kY<2) {
       stop("there must be at least 2 categories")
     }
-    lY <- length(offsetY)
-    if(!(lY %in% c(0, kY))) {
-      stop(paste0("length of offsetY argument must be 0 or ", kY))
-    }
+    # lY <- length(offsetY)
+    # if(!(lY %in% c(0, kY))) {
+    #   stop(paste0("length of offsetY argument must be 0 or ", kY))
+    # }
   }
   
-  if(is.null(offsetY)) {
-    if(typeY == "continuous"){
-      offsetY <- mean(Y)
-    } else if(typeY == "binary"){
-      offsetY <- qnorm(offsetY)
-      # offsetY <- qlogis(offsetY)
-    } else if(typeY == "multinomial"){
-      offsetY <- 0
-    }
+  if(typeY == "continuous"){
+    offsetY <- mean(Y)
+  } else if(typeY == "binary"){
+    offsetY <- qnorm(offsetY)
+    # offsetY <- qlogis(offsetY)
+  } else if(typeY == "multinomial"){
+    offsetY <- NULL
   }
   
   #--------------------------------------------------
@@ -159,67 +157,197 @@ rBART <- function(Y, matX, Uindex=NULL,
   }
   #--------------------------------------------------
   ptm <- proc.time()
-  res <- .Call("crBART",
-               ntypeY,    # 1:"continuous"; 2:"binary"; 3:"multinomial"
-               n,         # number of observations in training data
-               p,         # dimension of x
-               matX,      # p x n training data matX
-               Y,         # 1 x n training data Y
-               c.index,
-               n.j.vec,
-               u,         # random effects, if estimated
-               J,
-               B_u,
-               ntree,
-               numcut,
-               ndpost*keepevery,
-               nskip,
-               keepevery,
-               power,
-               base,
-               offsetY,
-               tau,
-               nu,
-               lambda,
-               sigest,
-               sparse,
-               theta,
-               omega,
-               a,
-               b,
-               rho,
-               augment,
-               printevery,
-               xinfo)
-  res$proc.time <- proc.time()-ptm
-  #--------------------------------------------------
-  
-  # if(typeY == "continuous"){
-  #   
-  # } else if(typeY == "binary"){
-  #   
-  # } else if(typeY == "multinomial"){
-  #   
-  # }
-  
   if(typeY == "continuous"){
+    #--------------------------------------------------
+    res <- .Call("crBART",
+                 ntypeY,    # 1:"continuous"; 2:"binary"; 3:"multinomial"
+                 n,         # number of observations in training data
+                 p,         # dimension of x
+                 matX,      # p x n training data matX
+                 Y,         # 1 x n training data Y
+                 c.index,
+                 n.j.vec,
+                 u,         # random effects, if estimated
+                 J,
+                 B_u,
+                 ntree,
+                 numcut,
+                 ndpost*keepevery,
+                 nskip,
+                 keepevery,
+                 power,
+                 base,
+                 offsetY,
+                 tau,
+                 nu,
+                 lambda,
+                 sigest,
+                 sparse,
+                 theta,
+                 omega,
+                 a,
+                 b,
+                 rho,
+                 augment,
+                 printevery,
+                 xinfo)
+    
     res$yhat.mean <- apply(res$y.draw, 2, mean)
+    names(res$treedraws$cutpoints) <- dimnames(matX)[[1]]
+    dimnames(res$varcount)[[2]] <- as.list(dimnames(matX)[[1]])
+    dimnames(res$varprob)[[2]] <- as.list(dimnames(matX)[[1]])
+    res$varcount.mean <- apply(res$varcount, 2, mean)
+    res$varprob.mean <- apply(res$varprob, 2, mean)
+    
   } else if(typeY == "binary"){
+    #--------------------------------------------------
+    res <- .Call("crBART",
+                 ntypeY,    # 1:"continuous"; 2:"binary"; 3:"multinomial"
+                 n,         # number of observations in training data
+                 p,         # dimension of x
+                 matX,      # p x n training data matX
+                 Y,         # 1 x n training data Y
+                 c.index,
+                 n.j.vec,
+                 u,         # random effects, if estimated
+                 J,
+                 B_u,
+                 ntree,
+                 numcut,
+                 ndpost*keepevery,
+                 nskip,
+                 keepevery,
+                 power,
+                 base,
+                 offsetY,
+                 tau,
+                 nu,
+                 lambda,
+                 sigest,
+                 sparse,
+                 theta,
+                 omega,
+                 a,
+                 b,
+                 rho,
+                 augment,
+                 printevery,
+                 xinfo)
+    
     res$prob <- pnorm(res$y.draw)
     # res$prob <- plogis(res$y.draw)
     res$prob.mean <- apply(res$prob, 2, mean)
-  } else if(typeY == "multinomial"){
     
+    names(res$treedraws$cutpoints) <- dimnames(matX)[[1]]
+    dimnames(res$varcount)[[2]] <- as.list(dimnames(matX)[[1]])
+    dimnames(res$varprob)[[2]] <- as.list(dimnames(matX)[[1]])
+    res$varcount.mean <- apply(res$varcount, 2, mean)
+    res$varprob.mean <- apply(res$varprob, 2, mean)
+    
+  } else if(typeY == "multinomial"){
+    #--------------------------------------------------
+    res <- list()
+    res$kY <- kY
+    res$catsY <- catsY
+    nY <- length(Y)
+    pY <- nrow(matX) ## transposed
+    
+    lY <- kY - 1
+    offsetY <- numeric(lY)
+    res$varcount <- as.list(1:lY)
+    res$varprob  <- as.list(1:lY)
+    # res$varcount <- array(dim=c(ndpost, pY, lY))
+    res$varcount.mean <- matrix(nrow=lY, ncol=pY)
+    # res$varprob <- array(dim=c(ndpost, pY, lY))
+    res$varprob.mean <- matrix(nrow=lY, ncol=pY)
+    res$offsetY <- offsetY
+    res$treedraws <- list()
+    res$treedraws$trees <- as.list(1:lY)
+    ##res$rm.const <- as.list(1:lY)
+    res.list <- as.list(1:lY)
+    
+    for(k in 1:kY) {
+      condY <- which(Y>=catsY[k])
+      
+      tmp.n = length(condY)
+      tmp.Y = (Y[condY]==k)*1
+      tmp.matX = matX[, condY]
+      
+      tmp.c <- integer(tmp.n) ## changing from R/arbitrary indexing to C/0
+      tmp.Uindex <- Uindex[condY]
+      tmp.u <- unique(tmp.Uindex)
+      for(i in 1:tmp.n) {
+        tmp.c[i] <- which(tmp.Uindex[i]==tmp.u)-1
+      }
+      tmp.u <- unique(tmp.c)
+      J <- length(tmp.u)
+      tmp.n.j.vec <- integer(J) ## n_j for each j
+      for(j in 1:J) {
+        tmp.n.j.vec[j] <- length(which(tmp.u[j]==tmp.c))
+      }
+      tmp.offsetY = offsetY[k]
+      
+      if(k<kY) {
+        res.list[[k]] <-
+          .Call("crBART",
+                ntypeY = ntypeY,      # 1:"continuous"; 2:"binary"; 3:"multinomial"
+                tmp.n,               # number of observations in training data
+                p,               # dimension of x
+                tmp.matX,         # p x n training data matX
+                tmp.Y,            # 1 x n training data Y
+                tmp.c,
+                n.j.vec,
+                u,               # random effects, if estimated
+                J,
+                B_u,
+                ntree,
+                numcut,
+                ndpost*keepevery,
+                nskip,
+                keepevery,
+                power,
+                base,
+                tmp.offsetY,
+                tau,
+                nu,
+                lambda,
+                sigest,
+                sparse,
+                theta,
+                omega,
+                a,
+                b,
+                rho,
+                augment,
+                printevery,
+                xinfo)
+        
+        res$varcount[[k]] <- res.list[[k]]$varcount
+        res$varprob[[k]] <- res.list[[k]]$varprob
+        
+        # for(q in 1:pY) {
+        #   res$varcount[ , q, k] <- res.list[[k]]$varcount[ , q]
+        #   res$varcount.mean[k, q] <- res.list[[k]]$varcount.mean[q]
+        #   res$varprob[ , q, k] <- res.list[[k]]$varprob[ , q]
+        #   res$varprob.mean[k, q] <- res.list[[k]]$varprob.mean[q]
+        # }
+        
+        # res$offsetY[k] <- res.list[[k]]$offsetY
+        # res$rm.const[[k]] <- res.list[[k]]$rm.const
+        res$treedraws$trees[[k]] <- res.list[[k]]$treedraws$trees
+      }
+    }
+    #--------------------------------------------------
+    res$treedraws$cutpoints <- res.list[[1]]$treedraws$cutpoints
+    dimnames(res$varcount.mean)[[2]] <- dimnames(res$varcount[[1]])[[2]]
+    dimnames(res$varprob.mean)[[2]] <- dimnames(res$varprob[[1]])[[2]]
+    res$rm.const <- res.list[[1]]$rm.const
+    res$comp.test <- NULL
   }
+  res$proc.time <- proc.time()-ptm
   
   #--------------------------------------------------
-  names(res$treedraws$cutpoints) <- dimnames(matX)[[1]]
-  dimnames(res$varcount)[[2]] <- as.list(dimnames(matX)[[1]])
-  dimnames(res$varprob)[[2]] <- as.list(dimnames(matX)[[1]])
-  res$varcount.mean <- apply(res$varcount, 2, mean)
-  res$varprob.mean <- apply(res$varprob, 2, mean)
   res$hostname <- hostname
-  
   res$offsetY <- offsetY  
   res$typeY <- typeY
   res$ndpost <- ndpost

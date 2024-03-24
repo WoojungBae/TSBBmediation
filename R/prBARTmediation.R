@@ -63,9 +63,14 @@ prBARTmediation = function(object,  # object from rBARTmediation
   }
   
   # --------------------------------------------------
-  matM0z0.test = rbind(M0.test,matXz0.test)
-  matM0z1.test = rbind(M0.test,matXz1.test)
-  matM1z1.test = rbind(M1.test,matXz1.test)
+  matM0z0.test = rbind(M0.test, matXz0.test)
+  matM0z1.test = rbind(M0.test, matXz1.test)
+  matM1z1.test = rbind(M1.test, matXz1.test)
+  
+  py <- length(object$matMtreedraws$cutpoints)
+  if(py!=nrow(matM0z0.test)) {
+    stop(paste0('The number of columns in matM.test must be equal to ', py))
+  }
   
   Yz0m0res = .Call("cprBART", object$matMtreedraws, matM0z0.test, mc.cores)$yhat.test + object$Yoffset
   Yz1m0res = .Call("cprBART", object$matMtreedraws, matM0z1.test, mc.cores)$yhat.test + object$Yoffset
@@ -80,7 +85,6 @@ prBARTmediation = function(object,  # object from rBARTmediation
       Yz1m1res[,whichUindex] = Yz1m1res[,whichUindex] + Yreff_tmp
     }
   }
-  
   if(object$typeY == "continuous"){
     Yz0m0.test = sapply(1:N, function(i) rnorm(n_MCMC, Yz0m0res[,i], object$iYsigest))
     Yz1m0.test = sapply(1:N, function(i) rnorm(n_MCMC, Yz1m0res[,i], object$iYsigest))

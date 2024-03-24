@@ -378,6 +378,7 @@ RcppExport SEXP crBARTmediation(SEXP _typeM,   // 1:continuous, 2:binary, 3:mult
     // size_t index;
     size_t trcnt=0; // count kept train draws
     bool keeptreedraw, typeM1=(typeM==1 && Mlambda!=0.), typeY1=(typeY==1 && Ylambda!=0.);
+    // typeM1=(typeM==1), typeY1=(typeY==1);
     
     time_t tp;
     int time1 = time(&tp), total=numdraw+burn;
@@ -412,15 +413,21 @@ RcppExport SEXP crBARTmediation(SEXP _typeM,   // 1:continuous, 2:binary, 3:mult
       //--------------------------------------------------
       // draw iMsigest and iYsigest
       double Mrss=0., Yrss=0.;
-      for(size_t i=0;i<n;i++) {
-        Mrss += pow((iM[i]-MOffset-mBM.f(i)-uM[u_index[i]]), 2.);
-        Yrss += pow((iY[i]-YOffset-yBM.f(i)-uY[u_index[i]]), 2.);
+      if(typeM1){
+        for(size_t i=0;i<n;i++) {
+          Mrss += pow((iM[i]-MOffset-mBM.f(i)-uM[u_index[i]]), 2.);
+        }
+        iMsigest = sqrt((nu*Mlambda + Mrss)/gen.chi_square(df));
       }
-      iMsigest = sqrt((nu*Mlambda + Mrss)/gen.chi_square(df));
-      iYsigest = sqrt((nu*Ylambda + Yrss)/gen.chi_square(df));
+      if(typeY1){
+        for(size_t i=0;i<n;i++) {
+          Yrss += pow((iY[i]-YOffset-yBM.f(i)-uY[u_index[i]]), 2.);
+        }
+        iYsigest = sqrt((nu*Ylambda + Yrss)/gen.chi_square(df));
+      }
       
       //--------------------------------------------------
-      // draw tau_uM
+      // draw tau_uM, tau_uY
       double sum_uM2,sum_uY2;
       sum_uM2=0.,sum_uY2=0.;
       for(size_t j=0; j<J; j++) {
@@ -431,11 +438,11 @@ RcppExport SEXP crBARTmediation(SEXP _typeM,   // 1:continuous, 2:binary, 3:mult
       tau_uY=rtgamma(0.5*(J-1.), 0.5*sum_uY2, invB2Y, gen); 
       
       //--------------------------------------------------
-      // draw uM
+      // draw uM, uY
       size_t jj, n_j;
       double mu_uM_j, sd_uM_j, precM=pow(iMsigest, -2.);
       double mu_uY_j, sd_uY_j, precY=pow(iYsigest, -2.);
-      double mu2_uM_j, mu2_uY_j, mu_uMY_j;
+      double mu2_uM_j, mu2_uY_j, rho_uMY_j;
         
       jj=0;
       for(size_t j=0; j<J; j++) {
@@ -444,33 +451,44 @@ RcppExport SEXP crBARTmediation(SEXP _typeM,   // 1:continuous, 2:binary, 3:mult
         mu_uY_j=0.;
         mu2_uM_j=0.;
         mu2_uY_j=0.;
-        mu_uMY_j=0.;
+        rho_uMY_j=0.;
         sd_uM_j=pow(tau_uM+n_j*precM, -0.5);
         sd_uY_j=pow(tau_uY+n_j*precY, -0.5);
         for(size_t j=0; j<n_j; j++) {
-          mu_uM_j += (iM[jj]-MOffset-mBM.f(jj));
-          mu_uY_j += (iY[jj]-YOffset-yBM.f(jj));
+          if (typeM==1) {
+            mu_uM_j += (iM[jj]-(MOffset+mBM.f(jj)));
+          } else {
+            mu_uM_j += (iM[jj]-pnorm(MOffset+mBM.f(jj),0.,1.,1,0));
+          }
+          if (typeY==1) {
+            mu_uY_j += (iY[jj]-(YOffset+yBM.f(jj)));
+          } else {
+            mu_uY_j += (iY[jj]-pnorm(YOffset+yBM.f(jj),0.,1.,1,0));
+          }
           mu2_uM_j += pow(mu_uM_j, 2.);
           mu2_uY_j += pow(mu_uY_j, 2.);
-          mu_uMY_j += mu_uM_j * mu_uY_j;
+          rho_uMY_j += mu_uM_j * mu_uY_j;
           jj++;
         }
         mu_uM_j *= precM*pow(sd_uM_j, 2.);
         mu_uY_j *= precY*pow(sd_uY_j, 2.);
+        rho_uMY_j *= pow(mu2_uM_j*mu2_uY_j, -2.);
         uM[j]=gen.normal()*sd_uM_j+mu_uM_j;
         // uY[j]=gen.normal()*sd_uY_j+mu_uY_j;
-        uY[j]=gen.normal()*sd_uY_j*(1-pow(mu_uMY_j, 2.)/(mu2_uM_j*mu2_uY_j))+
-          (mu_uY_j + (mu_uMY_j/mu2_uM_j)*(uM[j]-mu_uM_j));
+        uY[j]=gen.normal()*sd_uY_j*(1-pow(rho_uMY_j,2))+
+          (mu_uY_j + (rho_uMY_j*sd_uY_j/sd_uM_j)*(uM[j]-mu_uM_j));
       }
       
       //--------------------------------------------------
       if(postrep>=burn) {
-        if(nkeeptrain && (((postrep-burn+1) % skiptr) ==0)) {
+        if(nkeeptrain && (((postrep-burn+1) % skiptr) == 0)) {
           for(size_t i=0;i<n;i++) {
-            MDRAW(trcnt,i)=MOffset+mBM.f(i);
-            YDRAW(trcnt,i)=YOffset+yBM.f(i);
-            // MDRAW(trcnt,i)=MOffset+mBM.f(i)+uM[u_index[i]];
-            // YDRAW(trcnt,i)=YOffset+yBM.f(i)+uY[u_index[i]];
+            // MDRAW(trcnt,i) = mBM.f(i);
+            // YDRAW(trcnt,i) = yBM.f(i);
+            // MDRAW(trcnt,i) = MOffset + mBM.f(i);
+            // YDRAW(trcnt,i) = YOffset + yBM.f(i);
+            MDRAW(trcnt,i) = MOffset + mBM.f(i) + uM[u_index[i]];
+            YDRAW(trcnt,i) = YOffset + yBM.f(i) + uY[u_index[i]];
           }
           Msdraw[trcnt]=iMsigest;
           Ysdraw[trcnt]=iYsigest;

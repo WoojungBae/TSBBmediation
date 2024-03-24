@@ -42,15 +42,66 @@ predict.rBART <- function(object, newdata, mc.cores=1, openmp=(mc.cores.openmp()
     call <- prBART
   }
   
-  out <- list()
-  out$pred = call(newdata, object$treedraws, mc.cores=mc.cores, 
-                  mu=object$offsetY, ...)
   if(object$typeY == "continuous"){
-    # 
+    out <- list()
+    out$pred = call(newdata, object$treedraws, mc.cores=mc.cores, 
+                    mu=object$offsetY, ...)
   } else if(object$typeY == "binary"){
+    out <- list()
+    out$pred = call(newdata, object$treedraws, mc.cores=mc.cores, 
+                    mu=object$offsetY, ...)
     out$prob <- pnorm(out$pred)
   } else if(object$typeY == "multinomial"){
-    # 
+    kY <- object$kY
+    lY <- kY-1
+    pred <- as.list(1:lY)
+    trees <- object$treedraws$trees
+
+    for(k in 1:lY) {
+      ## eval(parse(text=paste0('object$treedraws$trees=',
+      ##                        'object$treedraws$tree', k)))
+      object$treedraws$trees <- trees[[k]]
+      pred[[k]] <- list(yhat.test=call(newdata, object$treedraws,
+                                       mc.cores=mc.cores,
+                                       mu=object$offset[k], ...))
+      ## predict.gbart testing
+      ## pred[[k]] <- call(object, newdata, mc.cores=mc.cores,
+      ##                   openmp=openmp, type=object$type)
+    }
+    H <- dim(pred[[1]]$yhat.test)
+    ndpost <- H[1]
+    np <- H[2]
+    res <- list()
+    res$yhat.test <- matrix(nrow=ndpost, ncol=kY*np)
+    res$prob.test <- matrix(nrow=ndpost, ncol=kY*np)
+    res$comp.test <- matrix(nrow=ndpost, ncol=kY*np)
+
+    for(i in 1:np) {
+      for(j in 1:kY) {
+        k <- (i-1)*kY+j
+        if(j<kY) {
+          res$yhat.test[ , k] <- pred[[j]]$yhat.test[ , i]
+          res$prob.test[ , k] <- pnorm(res$yhat.test[ , k])
+          if(j==1) {
+            res$comp.test[ , k] <- 1-res$prob.test[ , k]
+          } else {
+            res$comp.test[ , k] <- res$comp.test[ , k-1]*
+              (1-res$prob.test[ , k])
+            res$prob.test[ , k] <- res$comp.test[ , k-1]*
+              res$prob.test[ , k]
+          }
+        } else {
+          res$prob.test[ , k] <- res$comp.test[ , k-1]
+        }
+      }
+    }
+
+    res$prob.test.mean <- apply(res$prob.test, 2, mean)
+    res$yhat.test.mean <- NULL
+    res$comp.test <- NULL
+    res$kY <- kY
+    res$offset <- object$offset
+    attr(res, 'class') <- 'rBART'
   }
   
   return(out)

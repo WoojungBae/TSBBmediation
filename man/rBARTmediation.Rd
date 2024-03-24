@@ -17,8 +17,8 @@ so that it contributes a small amount to the overall fit.
 }
 \usage{
 rBARTmediation(Y, M, Z, X, Uindex=NULL, 
-               typeY = "continuous", 
                typeM = "continuous",
+               typeY = "continuous",
                B_uM=NULL, B_uY=NULL,
                sparse=FALSE, theta=0, omega=1,
                a=0.5, b=1, augment=FALSE, 
@@ -30,7 +30,7 @@ rBARTmediation(Y, M, Z, X, Uindex=NULL,
                k=2, power=2, base=0.95,
                Mlambda=NA, Ylambda=NA,  
                Mtau.num=NA, Ytau.num=NA,
-               Moffset = mean(M), Yoffset = mean(Y),
+               Moffset = NULL, Yoffset = NULL,
                ntree=200L, 
                matXnumcut=100L, matMnumcut=100L,
                ndpost=1e3, nskip=1e4, keepevery=1e1,

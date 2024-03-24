@@ -17,8 +17,8 @@
 ## https://www.R-project.org/Licenses/GPL-2
 
 rBARTmediation = function(Y, M, Z, X, Uindex=NULL, 
-                          typeY = "continuous",
                           typeM = "continuous",
+                          typeY = "continuous",
                           B_uM=NULL, B_uY=NULL,
                           sparse=FALSE, theta=0, omega=1,
                           a=0.5, b=1, augment=FALSE, 
@@ -30,7 +30,7 @@ rBARTmediation = function(Y, M, Z, X, Uindex=NULL,
                           k=2, power=2, base=0.95,
                           Mlambda=NA, Ylambda=NA,  
                           Mtau.num=NA, Ytau.num=NA,
-                          Moffset = mean(M), Yoffset = mean(Y),
+                          Moffset = NULL, Yoffset = NULL,
                           ntree=200L, 
                           matXnumcut=100L, matMnumcut=100L,
                           ndpost=1e3, nskip=1e4, keepevery=1e1,
@@ -39,10 +39,31 @@ rBARTmediation = function(Y, M, Z, X, Uindex=NULL,
                           mc.cores = 1L, nice = 19L, seed = 99L){
   # --------------------------------------------------
   # data
-  ntypeY = as.integer(factor(typeY, levels = c("continuous", "binary", "multinomial"))) - 1
-  ntypeM = as.integer(factor(typeM, levels = c("continuous", "binary", "multinomial"))) - 1
+  ntypeY = as.integer(factor(typeY, levels = c("continuous", "binary", "multinomial")))
+  ntypeM = as.integer(factor(typeM, levels = c("continuous", "binary", "multinomial")))
   if(is.na(ntypeY) || is.na(ntypeM)){
     stop("type argument must be set to either 'continuous', 'binary' or 'multinomial'")
+  }
+  
+  if(is.null(Yoffset)){
+    if(typeY == "continuous"){
+      Yoffset <- mean(Y)
+    } else if(typeY == "binary"){
+      Yoffset <- qnorm(mean(Y))
+      # Yoffset <- qlogis(Yoffset)
+    } else if(typeY == "multinomial"){
+      Yoffset <- 0
+    }
+  }
+  if(is.null(Moffset)){
+    if(typeM == "continuous"){
+      Moffset <- mean(M)
+    } else if(typeM == "binary"){
+      Moffset <- qnorm(mean(M))
+      # Moffset <- qlogis(Moffset)
+    } else if(typeM == "multinomial"){
+      Moffset <- 0
+    }
   }
   
   n = length(Y)
@@ -66,6 +87,15 @@ rBARTmediation = function(Y, M, Z, X, Uindex=NULL,
     n.j.vec[j]=length(which(u.index[j]==u0.index))
   }
   
+  # --------------------------------------------------
+  tmp.order = order(u0.index)
+  matX = matX[tmp.order,]
+  matM = matM[tmp.order,]
+  M = M[tmp.order]
+  Y = Y[tmp.order]
+  u0.index = u0.index[tmp.order]
+  
+  # --------------------------------------------------
   if(!transposed) {
     matXtemp = bartModelMatrix(matX, matXnumcut, usequants=usequants,
                                xinfo=xinfo, rm.const=matXrm.const)
@@ -104,47 +134,58 @@ rBARTmediation = function(Y, M, Z, X, Uindex=NULL,
   # --------------------------------------------------
   #prior
   nu = sigdf
-  if(is.na(Mlambda)) {
-    if(is.na(Msigest)) {
-      if(pm < n) {
-        lmeMtemp = lme(M~., random=~1|factor(Uindex), data.frame(t(matX),Uindex,M))
-        Msigest = summary(lmeMtemp)$sigma
-        uM = c(lmeMtemp$coefficients$random[[1]])
-        if(length(B_uM)==0) {
-          B_uM=2*sd(uM)
-        }
-      } else {
-        Msigest = sd(M)
-      }
-    }
-    qchi = qchisq(1.0-sigquant,nu)
-    Mlambda = (Msigest*Msigest*qchi)/nu # Mlambda parameter for sigma prior
-  } else {
-    Msigest=sqrt(Mlambda)
-  }
-  if(is.na(Ylambda)) {
-    if(is.na(Ysigest)) {
-      if(py < n) {
-        lmeYtemp = lme(Y~., random=~1|factor(Uindex), data.frame(t(matM),Uindex,Y))
-        Ysigest = summary(lmeYtemp)$sigma
-        uY = c(lmeYtemp$coefficients$random[[1]])
-        if(length(B_uY)==0) {
-          B_uY=2*sd(uY)
-        }
-      } else {
-        Ysigest = sd(Y)
-      }
-    }
-    qchi = qchisq(1.0-sigquant,nu)
-    Ylambda = (Ysigest*Ysigest*qchi)/nu # Mlambda parameter for sigma prior
-  } else {
-    Ysigest=sqrt(Ylambda)
-  }
   
+  if(typeM == "continuous") {
+    if(is.na(Mlambda)) {
+      if(is.na(Msigest)) {
+        if(pm < n) {
+          lmeMtemp = lme(M~., random=~1|factor(Uindex), data.frame(t(matX),Uindex,M))
+          Msigest = summary(lmeMtemp)$sigma
+          uM = c(lmeMtemp$coefficients$random[[1]])
+          if(length(B_uM)==0) {
+            B_uM=2*sd(uM)
+          }
+        } else {
+          Msigest = sd(M)
+        }
+      }
+      qchi = qchisq(1.0-sigquant,nu)
+      Mlambda = (Msigest*Msigest*qchi)/nu # Mlambda parameter for sigma prior
+    } else {
+      Msigest=sqrt(Mlambda)
+    }
+  } else {
+    Mlambda = 1
+    Msigest = 1
+  }
   if(is.na(Mtau.num)) {
     Mtau=(max(M)-min(M))/(2*k*sqrt(ntree))
   } else {
     Mtau = Mtau.num/sqrt(ntree)
+  }
+  
+  if(typeY == "continuous") {
+    if(is.na(Ylambda)) {
+      if(is.na(Ysigest)) {
+        if(py < n) {
+          lmeYtemp = lme(Y~., random=~1|factor(Uindex), data.frame(t(matM),Uindex,Y))
+          Ysigest = summary(lmeYtemp)$sigma
+          uY = c(lmeYtemp$coefficients$random[[1]])
+          if(length(B_uY)==0) {
+            B_uY=2*sd(uY)
+          }
+        } else {
+          Ysigest = sd(Y)
+        }
+      }
+      qchi = qchisq(1.0-sigquant,nu)
+      Ylambda = (Ysigest*Ysigest*qchi)/nu # Mlambda parameter for sigma prior
+    } else {
+      Ysigest=sqrt(Ylambda)
+    }
+  } else {
+    Ylambda = 1
+    Ysigest = 1
   }
   if(is.na(Ytau.num)) {
     Ytau=(max(Y)-min(Y))/(2*k*sqrt(ntree))

@@ -295,7 +295,8 @@ RcppExport SEXP crBART(SEXP _typeY,   // 1:continuous, 2:binary, 3:multinomial
           z[i] = sign[i] * rtnorm(sign[i]*bm.f(i), -sign[i]*(Offset+u[u_index[i]]), sigma, gen);
           // svec[i]=sqrt(draw_lambda_i(pow(svec[i], 2.), sign[i]*(bm.f(i)+Offset+u[u_index[i]]), 1000, 1, gen));
         } else if(typeY==3){
-          
+          z[i] = sign[i] * rtnorm(sign[i]*bm.f(i), -sign[i]*(Offset+u[u_index[i]]), sigma, gen);
+          // svec[i]=sqrt(draw_lambda_i(pow(svec[i], 2.), sign[i]*(bm.f(i)+Offset+u[u_index[i]]), 1000, 1, gen));
         }
       }
       
