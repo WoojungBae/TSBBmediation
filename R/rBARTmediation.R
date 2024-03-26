@@ -16,9 +16,9 @@
 ## along with this program; if not, a copy is available at
 ## https://www.R-project.org/Licenses/GPL-2
 
-rBARTmediation = function(Y, M, Z, X, Uindex=NULL, 
-                          typeM = "continuous",
+rBARTmediation = function(Y, M, Z, C, V, Uindex=NULL, 
                           typeY = "continuous",
+                          typeM = "continuous",
                           B_uM=NULL, B_uY=NULL,
                           sparse=FALSE, theta=0, omega=1,
                           a=0.5, b=1, augment=FALSE, 
@@ -53,6 +53,7 @@ rBARTmediation = function(Y, M, Z, X, Uindex=NULL,
       # Yoffset <- qlogis(Yoffset)
     } else if(typeY == "multinomial"){
       Yoffset <- 0
+      stop("in development: 'multinomial'")
     }
   }
   if(is.null(Moffset)){
@@ -67,7 +68,7 @@ rBARTmediation = function(Y, M, Z, X, Uindex=NULL,
   }
   
   n = length(Y)
-  
+  X = cbind(C, V)
   matX = cbind(Z, X)
   matM = cbind(M, matX)
   

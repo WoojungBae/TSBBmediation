@@ -16,9 +16,9 @@ each tree is constrained by a prior to be a weak learner
 so that it contributes a small amount to the overall fit.
 }
 \usage{
-rBARTmediation(Y, M, Z, X, Uindex=NULL, 
-               typeM = "continuous",
+rBARTmediation(Y, M, Z, C, V, Uindex=NULL, 
                typeY = "continuous",
+               typeM = "continuous",
                B_uM=NULL, B_uY=NULL,
                sparse=FALSE, theta=0, omega=1,
                a=0.5, b=1, augment=FALSE, 
@@ -50,7 +50,16 @@ rBARTmediation(Y, M, Z, X, Uindex=NULL,
     with a probit link is fit by default: you can over-ride the default via the
     argument \code{type} to specify a logit BART model.}
   \item{Z}{Cluster-level treatment (Binary).}
-  \item{X}{Individual-level and Cluster-level confounders:
+  \item{C}{Individual-level:
+    Explanatory variables for training (in sample)
+    data.\cr May be a matrix or a data frame, with (as usual) rows
+    corresponding to observations and columns to variables.\cr If a
+    variable is a factor in a data frame, it is replaced with dummies.
+    Note that \eqn{q} dummies are created if \eqn{q>2} and one dummy
+    created if \eqn{q=2} where \eqn{q} is the number of levels of the
+    factor.  \code{rBARTmediation} will generate draws of \eqn{f(X)} for each
+    \eqn{matX} which is a row of \code{matX = (Z, X)}.}
+  \item{V}{Cluster-level confounders:
     Explanatory variables for training (in sample)
     data.\cr May be a matrix or a data frame, with (as usual) rows
     corresponding to observations and columns to variables.\cr If a
@@ -278,6 +287,8 @@ rBARTmediation(Y, M, Z, X, Uindex=NULL,
   z = rbinom(J, 1, 0.5)
   z = z[u0]
   x = matrix(runif(n*9),n,9)
+  c = x[,1:6]
+  v = x[,7:9]
   
   # m = f(matx) + Msigma * z where Msigma = 1.0 and z ~ N(0,1) and matx = cbind(z, x)
   m0 = f(cbind(0, x)) + 1*rnorm(n)
@@ -291,12 +302,12 @@ rBARTmediation(Y, M, Z, X, Uindex=NULL,
   y = ifelse(z==1,y11,y00)
   
   # test BART with token run to ensure installation works
-  BARTfit = rBARTmediation(y,m,z,x,u0,nskip=5,ndpost=5)
+  BARTfit = rBARTmediation(y,m,z,c,v,u0,nskip=5,ndpost=5)
   BARTfitPRED = predict(BARTfit,x,u0)
 
   \dontrun{
     # run BART
-    BARTfit = rBARTmediation(y,m,z,x,u0)
+    BARTfit = rBARTmediation(y,m,z,c,v,u0)
     BARTfitPRED = predict(BARTfit,x,u0)
   }
 }

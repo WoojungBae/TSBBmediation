@@ -69,25 +69,27 @@ small amount to the overall fit.
   z = rbinom(J, 1, 0.5)
   z = z[u0]
   x = matrix(runif(n*9),n,9)
+  c = x[,1:6]
+  v = x[,7:9]
   
-  # m = f(matx) + Msigma * z where Msigma = 1.0 and z ~ N(0,1) where matx = cbind(z, c)
+  # m = f(matx) + Msigma * z where Msigma = 1.0 and z ~ N(0,1) and matx = cbind(z, x)
   m0 = f(cbind(0, x)) + 1*rnorm(n)
   m1 = f(cbind(1, x)) + 1*rnorm(n)
   m = ifelse(z==1,m1,m0)
   
-  # y = g(matx) * m + Ysigma * z where Ysigma = 2.0 and z ~ N(0,1)
+  # y = g(matx) * m + Ysigma * z where Ysigma = 2.0 and z ~ N(0,1) and matx = cbind(z, x)
   y00 = g(cbind(0, x)) * m0 + 2 * rnorm(n)
   y10 = g(cbind(1, x)) * m0 + 2 * rnorm(n)
   y11 = g(cbind(1, x)) * m1 + 2 * rnorm(n)
   y = ifelse(z==1,y11,y00)
   
   # test BART with token run to ensure installation works
-  BARTfit = rBARTmediation(y,m,z,x,Uindex=u0,nskip=5,ndpost=5)
-  BARTfitPRED = predict(BARTfit, x, u0)
+  BARTfit = rBARTmediation(y,m,z,c,v,u0,nskip=5,ndpost=5)
+  BARTfitPRED = predict(BARTfit,x,u0)
 
   \dontrun{
     # run BART
-    BARTfit = rBARTmediation(y,m,z,x,Uindex=u0)
+    BARTfit = rBARTmediation(y,m,z,c,v,u0)
     BARTfitPRED = predict(BARTfit,x,u0)
   }
 }
