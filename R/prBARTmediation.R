@@ -51,13 +51,13 @@ prBARTmediation = function(object,  # object from rBARTmediation
   if(object$typeM == "continuous"){
     M0.test = apply(M0res, 2, mean)
     M1.test = apply(M1res, 2, mean)
-    M0.test = rnorm(n_MCMC, M0.test, object$iMsigest)
-    M1.test = rnorm(n_MCMC, M1.test, object$iMsigest)
+    M0.test = rnorm(N, M0.test, object$iMsigest)
+    M1.test = rnorm(N, M1.test, object$iMsigest)
   } else if(object$typeM == "binary"){
     M0.test = apply(pnorm(M0res), 2, mean)
     M1.test = apply(pnorm(M1res), 2, mean)
-    M0.test = rbinom(n_MCMC, 1, M0.test)
-    M1.test = rbinom(n_MCMC, 1, M1.test)
+    M0.test = rbinom(N, 1, M0.test)
+    M1.test = rbinom(N, 1, M1.test)
   } else if(object$typeM == "multinomial"){
     #
   }
