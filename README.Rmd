@@ -11,8 +11,6 @@ output: github_document
 
 The R package **TSBBmediation** is intended to be a user-friendly mediation analysis using Mediation analysis using Two-Stage Bayesian Bootstrapping (TSBB).
 
-Many of source codes are forked from an R package BART (https://cran.r-project.org/web/packages/BART/index.html). 
-
 ## Development
 
 The latest version of the package is under development at
