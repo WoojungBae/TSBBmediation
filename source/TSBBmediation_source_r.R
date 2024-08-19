@@ -2,16 +2,16 @@
 # Define functions ------------------------------------------------------------
 # -----------------------------------------------------------------------------
 # Define function of distance for matrix
-matrix_dist = function(X,V0){
-  J = max(V0)
-  n_j = as.numeric(table(V0))
-  X_V0 = mapply(function(l) matrix(X[which(V0==l),], nrow=sum(V0==l)) ,1:J, SIMPLIFY = FALSE)
+matrix_dist = function(X,Uindex){
+  J = max(Uindex)
+  n_j = as.numeric(table(Uindex))
+  X_Uindex = mapply(function(l) matrix(X[which(Uindex==l),], nrow=sum(Uindex==l)) ,1:J, SIMPLIFY = FALSE)
   
   X_dist = matrix(NA,nrow=J,ncol=J)
   for (l in 1:J) {
     n_k_temp = n_j[l]
     for (j in 1:J) {
-      X_dist[l,j] = mean(sapply(1:n_k_temp, function(i) mean((X_V0[[l]][i,] - t(X_V0[[j]]))^{2})))
+      X_dist[l,j] = mean(sapply(1:n_k_temp, function(i) mean((X_Uindex[[l]][i,] - t(X_Uindex[[j]]))^{2})))
     }
   }
   
@@ -22,21 +22,133 @@ matrix_dist = function(X,V0){
 # Define function to generate datasets
 generate_data = function(J,       # the number of cluster
                          N,       # the number of total subjects
-                         Scenario,
-                         Mdist = c("continuous", "binary", "ordinal", "count"),
-                         simple = TRUE,
-                         Ydist = "continuous"){  
+                         Scenario){
   # ------------------------------------------------------------------------------
   # ------------------------------------------------------------------------------
-  # Generate cluster, V0cat
-  pi_V0 = rep(1,J)
-  V0cat = t(rmultinom(N,1,pi_V0))
-  V0 = apply(V0cat,1,function(l) which(l == 1))
+  # ------------------------------------------------------------------------------
+  # Scenario
+  #  1 -  6: Ydist - "continuous" & Mdist - "binary"
+  #  7 - 12: Ydist - "continuous" & Mdist - "continuous"
+  #  1 -  3 &   7 -  9: simple mean for Y
+  #  4 -  6 &  10 - 12: complex mean for Y
+  #  1, 4, 7, 10: CVdependence = 1 # "indep"
+  #  2, 5, 8, 11: CVdependence = 2 # "weak"
+  #  3, 6, 9, 12: CVdependence = 3 # "strong"
+  
+  if (Scenario==1) {
+    # ------------------------------------------------------------------------------
+    Ydist = "continuous"
+    Mdist = "binary"
+    simple = TRUE
+    CVdependence = 1 # "indep"
+  } else if (Scenario==2) {
+    Ydist = "continuous"
+    Mdist = "binary"
+    simple = TRUE
+    CVdependence = 2 # "weak"
+  } else if (Scenario==3) {
+    Ydist = "continuous"
+    Mdist = "binary"
+    simple = TRUE
+    CVdependence = 3 # "strong"
+  } else if (Scenario==4) {
+    # ------------------------------------------------------------------------------
+    Ydist = "continuous"
+    Mdist = "binary"
+    simple = FALSE
+    CVdependence = 1 # "indep"
+  } else if (Scenario==5) {
+    Ydist = "continuous"
+    Mdist = "binary"
+    simple = FALSE
+    CVdependence = 2 # "weak"
+  } else if (Scenario==6) {
+    Ydist = "continuous"
+    Mdist = "binary"
+    simple = FALSE
+    CVdependence = 3 # "strong"
+  } else if (Scenario==7) {
+    # ------------------------------------------------------------------------------
+    Ydist = "continuous"
+    Mdist = "continuous"
+    simple = TRUE
+    CVdependence = 1 # "indep"
+  } else if (Scenario==8) {
+    Ydist = "continuous"
+    Mdist = "continuous"
+    simple = TRUE
+    CVdependence = 2 # "weak"
+  } else if (Scenario==9) {
+    Ydist = "continuous"
+    Mdist = "continuous"
+    simple = TRUE
+    CVdependence = 3 # "strong"
+  } else if (Scenario==10) {
+    # ------------------------------------------------------------------------------
+    Ydist = "continuous"
+    Mdist = "continuous"
+    simple = FALSE
+    CVdependence = 1 # "indep"
+  } else if (Scenario==11) {
+    Ydist = "continuous"
+    Mdist = "continuous"
+    simple = FALSE
+    CVdependence = 2 # "weak"
+  } else if (Scenario==12) {
+    Ydist = "continuous"
+    Mdist = "continuous"
+    simple = FALSE
+    CVdependence = 3 # "strong"
+  }
+  
+  # ------------------------------------------------------------------------------
+  # ------------------------------------------------------------------------------
+  # ------------------------------------------------------------------------------
+  if (Scenario==13) {
+    # ------------------------------------------------------------------------------
+    Ydist = "binary"
+    Mdist = "binary"
+    simple = TRUE
+    CVdependence = 1 # "indep"
+  } else if (Scenario==14) {
+    Ydist = "binary"
+    Mdist = "binary"
+    simple = TRUE
+    CVdependence = 2 # "weak"
+  } else if (Scenario==15) {
+    Ydist = "binary"
+    Mdist = "binary"
+    simple = TRUE
+    CVdependence = 3 # "strong"
+  } else if (Scenario==16) {
+    # ------------------------------------------------------------------------------
+    Ydist = "binary"
+    Mdist = "binary"
+    simple = FALSE
+    CVdependence = 1 # "indep"
+  } else if (Scenario==17) {
+    Ydist = "binary"
+    Mdist = "binary"
+    simple = FALSE
+    CVdependence = 2 # "weak"
+  } else if (Scenario==18) {
+    Ydist = "binary"
+    Mdist = "binary"
+    simple = FALSE
+    CVdependence = 3 # "strong"
+  }
+  
+  # ------------------------------------------------------------------------------
+  # ------------------------------------------------------------------------------
+  # Generate cluster, Uindexcat
+  Uindexcat = rmultinom(N, 1, rep(1,J))
+  Uindex = apply(Uindexcat, 2, function(l) which(l == 1))
   
   # ------------------------------------------------------------------------------
   # ------------------------------------------------------------------------------
   # Generate cluster-level treatment, Z
-  Z = ifelse(V0 <= (J+1)/2,0,1)
+  Z_Uindex = sort(sample(J,(J/2)))
+  Z = (Uindex %in% Z_Uindex) * 1
   z0 = 0
   z1 = 1
   
@@ -58,7 +170,7 @@ generate_data = function(J,       # the number of cluster
   mu_V3 = -1 + V1 + 2*V2; sig2_V3 = rep(4, J)
   V3 = rnorm(J,mu_V3,sqrt(sig2_V3))
   V = cbind(V1 , V2, V3)
-  V = t(sapply(1:N, function(i) V[V0[i],]))
+  V = t(sapply(1:N, function(i) V[Uindex[i],]))
   
   matV = cbind(1,V)
   
@@ -67,14 +179,14 @@ generate_data = function(J,       # the number of cluster
   p1_C = 3
   p2_C = 3
   p_C = p1_C + p2_C
-  if (Scenario == 1) {
+  if (CVdependence == 1) {
     beta_CV1 = rbind(rep(-1,J),matrix(rep(c( 0, 0, 0), J),ncol=J))
     beta_CV2 = rbind(rep( 1,J),matrix(rep(c( 0, 0, 0), J),ncol=J))
     beta_CV3 = rbind(rep( 0,J),matrix(rep(c( 0, 0, 0), J),ncol=J))
     beta_CV4 = rbind(rep(-2,J),matrix(rep(c( 0, 0, 0), J),ncol=J))
     beta_CV5 = rbind(rep( 2,J),matrix(rep(c( 0, 0, 0), J),ncol=J))
     beta_CV6 = rbind(rep( 0,J),matrix(rep(c( 0, 0, 0), J),ncol=J))
-  } else if (Scenario == 2) {
+  } else if (CVdependence == 2) {
     timesCV = 10
     beta_CV1 = rbind(-0.5*(-1)^{1:J},matrix(rep(c( 0.3, -0.2, -0.1)*timesCV, J),ncol=J))
     beta_CV2 = rbind( 0.2*(-1)^{1:J},matrix(rep(c( 0.3, -0.2, -0.1)*timesCV, J),ncol=J))
@@ -82,7 +194,7 @@ generate_data = function(J,       # the number of cluster
     beta_CV4 = rbind(-1.0*(-1)^{1:J},matrix(rep(c( 0.3, -0.2, -0.1)*timesCV, J),ncol=J))
     beta_CV5 = rbind( 0.4*(-1)^{1:J},matrix(rep(c( 0.3, -0.2, -0.1)*timesCV, J),ncol=J))
     beta_CV6 = rbind( 0.6*(-1)^{1:J},matrix(rep(c( 0.3, -0.2, -0.1)*timesCV, J),ncol=J))
-  } else if (Scenario == 3) {
+  } else if (CVdependence == 3) {
     timesCV = 20
     beta_CV1 = rbind(-0.5*(-1)^{1:J},matrix(rep(c( 0.3, -0.2, -0.1)*timesCV, J),ncol=J))
     beta_CV2 = rbind( 0.2*(-1)^{1:J},matrix(rep(c( 0.3, -0.2, -0.1)*timesCV, J),ncol=J))
@@ -98,34 +210,41 @@ generate_data = function(J,       # the number of cluster
   C3 = numeric(N)
   C_p2 = matrix(NA, nrow=N, ncol=p2_C)
   for (j in 1:J) {
-    ind_V0 = which(V0 == j)
-    num_V0 = length(ind_V0)
+    ind_Uindex = which(Uindex == j)
+    num_Uindex = length(ind_Uindex)
     
-    matV_temp = matV[ind_V0,]
+    matV_temp = matV[ind_Uindex,]
     
     pi_C1 = plogis(matV_temp %*% beta_CV1[,j])
-    C1[ind_V0] = rbinom(num_V0,1,pi_C1)
+    C1[ind_Uindex] = rbinom(num_Uindex,1,pi_C1)
     
     pi_C2 = plogis(matV_temp %*% beta_CV2[,j])
-    C2[ind_V0] = rbinom(num_V0,1,pi_C2)
+    C2[ind_Uindex] = rbinom(num_Uindex,1,pi_C2)
     
     pi_C3 = plogis(matV_temp %*% beta_CV3[,j])
-    C3[ind_V0] = rbinom(num_V0,1,pi_C3)
+    C3[ind_Uindex] = rbinom(num_Uindex,1,pi_C3)
     
     MU_p2C = cbind(matV_temp %*% beta_CV4[,j],
                    matV_temp %*% beta_CV5[,j],
                    matV_temp %*% beta_CV6[,j])
-    C_p2[ind_V0,] = t(sapply(1:num_V0, function(i) rmvn_cpp(1,MU_p2C[i,], SIG_p2_C)))
+    C_p2[ind_Uindex,] = t(sapply(1:num_Uindex, function(i) rmvn_cpp(1,MU_p2C[i,], SIG_p2_C)))
   }
   C = cbind(C1,C2,C3,C_p2)
   
   # ------------------------------------------------------------------------------
   # ------------------------------------------------------------------------------
   # Generate random effects for M and Y
-  # psi_M =  0.5*(-1)^{1:J}
-  # psi_Y = -0.5*(-1)^{1:J}
-  psi_M = rep(0,J)
-  psi_Y = rep(0,J)
+  B_psi_M = 1; B_psi_Y = 1; b_psi_YM = 0.3
+  bB_psi_YM = b_psi_YM * sqrt(B_psi_M * B_psi_Y)
+  psi_YM = rmvn_cpp(J, c(0,0),
+                    rbind(c(B_psi_Y, bB_psi_YM),
+                          c(bB_psi_YM, B_psi_M)))
+  psi_M = psi_YM[1,]
+  psi_Y = psi_YM[2,]
+  # psi_M =  1*(-1)^{1:J}
+  # psi_Y = -1*(-1)^{1:J}
+  # psi_M = rep(0,J)
+  # psi_Y = rep(0,J)
   
   # ------------------------------------------------------------------------------
   # ------------------------------------------------------------------------------
@@ -139,12 +258,12 @@ generate_data = function(J,       # the number of cluster
     Mhat_z0 = numeric(N)
     Mhat_z1 = numeric(N)
     for (j in 1:J) {
-      ind_V0 = which(V0 == j)
-      num_V0 = length(ind_V0)
-      C_temp = C[ind_V0,]
-      V_temp = V[ind_V0,]
-      Mhat_z0[ind_V0] = beta_M0 + z0 * beta_MZ + C_temp %*% beta_MC + V_temp %*% beta_MV + psi_M[j]
-      Mhat_z1[ind_V0] = beta_M0 + z1 * beta_MZ + C_temp %*% beta_MC + V_temp %*% beta_MV + psi_M[j]
+      ind_Uindex = which(Uindex == j)
+      num_Uindex = length(ind_Uindex)
+      C_temp = C[ind_Uindex,]
+      V_temp = V[ind_Uindex,]
+      Mhat_z0[ind_Uindex] = beta_M0 + z0 * beta_MZ + C_temp %*% beta_MC + V_temp %*% beta_MV + psi_M[j]
+      Mhat_z1[ind_Uindex] = beta_M0 + z1 * beta_MZ + C_temp %*% beta_MC + V_temp %*% beta_MV + psi_M[j]
     }
     M_z0 = rnorm(N, Mhat_z0)
     M_z1 = rnorm(N, Mhat_z1)
@@ -160,12 +279,12 @@ generate_data = function(J,       # the number of cluster
     Mhat_z0 = numeric(N)
     Mhat_z1 = numeric(N)
     for (j in 1:J) {
-      ind_V0 = which(V0 == j)
-      num_V0 = length(ind_V0)
-      C_temp = C[ind_V0,]
-      V_temp = V[ind_V0,]
-      Mhat_z0[ind_V0] = beta_M0 + z0 * beta_MZ + C_temp %*% beta_MC + V_temp %*% beta_MV + psi_M[j]
-      Mhat_z1[ind_V0] = beta_M0 + z1 * beta_MZ + C_temp %*% beta_MC + V_temp %*% beta_MV + psi_M[j]
+      ind_Uindex = which(Uindex == j)
+      num_Uindex = length(ind_Uindex)
+      C_temp = C[ind_Uindex,]
+      V_temp = V[ind_Uindex,]
+      Mhat_z0[ind_Uindex] = beta_M0 + z0 * beta_MZ + C_temp %*% beta_MC + V_temp %*% beta_MV + psi_M[j]
+      Mhat_z1[ind_Uindex] = beta_M0 + z1 * beta_MZ + C_temp %*% beta_MC + V_temp %*% beta_MV + psi_M[j]
     }
     M_z0 = rbinom(N, 1, pnorm(Mhat_z0))
     M_z1 = rbinom(N, 1, pnorm(Mhat_z1))
@@ -186,19 +305,19 @@ generate_data = function(J,       # the number of cluster
       M_z0 = numeric(N)
       M_z1 = numeric(N)
       for (j in 1:J) {
-        ind_V0 = which(V0 == j)
-        num_V0 = length(ind_V0)
+        ind_Uindex = which(Uindex == j)
+        num_Uindex = length(ind_Uindex)
         
-        C_temp = C[ind_V0,]
-        V_temp = V[ind_V0,]
+        C_temp = C[ind_Uindex,]
+        V_temp = V[ind_Uindex,]
         
         M_z0_temp = sapply(1:(K-1), function(l) gamma_M0[l] - (beta_M0 + z0 * beta_MZ + C_temp %*% beta_MC + V_temp %*% beta_MV + psi_M[j]))
         M_z0_temp = t(apply(cbind(0,plogis(M_z0_temp),1), 1, diff))
         M_z1_temp = sapply(1:(K-1), function(l) gamma_M0[l] - (beta_M0 + z1 * beta_MZ + C_temp %*% beta_MC + V_temp %*% beta_MV + psi_M[j]))
         M_z1_temp = t(apply(cbind(0,plogis(M_z1_temp),1), 1, diff))
         
-        M_z0[ind_V0] = sapply(1:num_V0, function(l) which(rmultinom(1, 1, M_z0_temp[l,])==1))
-        M_z1[ind_V0] = sapply(1:num_V0, function(l) which(rmultinom(1, 1, M_z1_temp[l,])==1))
+        M_z0[ind_Uindex] = sapply(1:num_Uindex, function(l) which(rmultinom(1, 1, M_z0_temp[l,])==1))
+        M_z1[ind_Uindex] = sapply(1:num_Uindex, function(l) which(rmultinom(1, 1, M_z1_temp[l,])==1))
       }
       
       M = ifelse(Z==z0, M_z0, M_z1)
@@ -223,12 +342,12 @@ generate_data = function(J,       # the number of cluster
     Mhat_z0 = numeric(N)
     Mhat_z1 = numeric(N)
     for (j in 1:J) {
-      ind_V0 = which(V0 == j)
-      num_V0 = length(ind_V0)
-      C_temp = C[ind_V0,]
-      V_temp = V[ind_V0,]
-      Mhat_z0[ind_V0] = exp(beta_M0 + z0 * beta_MZ + C_temp %*% beta_MC + V_temp %*% beta_MV + psi_M[j])
-      Mhat_z1[ind_V0] = exp(beta_M0 + z1 * beta_MZ + C_temp %*% beta_MC + V_temp %*% beta_MV + psi_M[j])
+      ind_Uindex = which(Uindex == j)
+      num_Uindex = length(ind_Uindex)
+      C_temp = C[ind_Uindex,]
+      V_temp = V[ind_Uindex,]
+      Mhat_z0[ind_Uindex] = exp(beta_M0 + z0 * beta_MZ + C_temp %*% beta_MC + V_temp %*% beta_MV + psi_M[j])
+      Mhat_z1[ind_Uindex] = exp(beta_M0 + z1 * beta_MZ + C_temp %*% beta_MC + V_temp %*% beta_MV + psi_M[j])
     }
     M_z0 = rpois(N,Mhat_z0)
     M_z1 = rpois(N,Mhat_z1)
@@ -253,13 +372,13 @@ generate_data = function(J,       # the number of cluster
     Y_z1m0 = numeric(N)
     Y_z1m1 = numeric(N)
     for (j in 1:J) {
-      ind_V0 = which(V0 == j)
-      num_V0 = length(ind_V0)
+      ind_Uindex = which(Uindex == j)
+      num_Uindex = length(ind_Uindex)
       
-      C_temp = C[ind_V0,]
-      V_temp = V[ind_V0,]
-      M_z0_temp = M_z0[ind_V0]
-      M_z1_temp = M_z1[ind_V0]
+      C_temp = C[ind_Uindex,]
+      V_temp = V[ind_Uindex,]
+      M_z0_temp = M_z0[ind_Uindex]
+      M_z1_temp = M_z1[ind_Uindex]
       
       Y_z0m0_temp = beta_Y0 + z0 * beta_YZ + C_temp %*% beta_YC + V_temp %*% beta_YV + psi_Y[j]
       Y_z1m0_temp = beta_Y0 + z1 * beta_YZ + C_temp %*% beta_YC + V_temp %*% beta_YV + psi_Y[j]
@@ -269,14 +388,14 @@ generate_data = function(J,       # the number of cluster
         Y_z1m0_temp = Y_z1m0_temp + M_z0_temp * beta_YM
         Y_z1m1_temp = Y_z1m1_temp + M_z1_temp * beta_YM
       } else {
-        Y_z0m0_temp = Y_z0m0_temp + 0.5 * (M_z0_temp * z0 + M_z0_temp^{2})
-        Y_z1m0_temp = Y_z1m0_temp + 0.5 * (M_z0_temp * z1 + M_z0_temp^{2})
-        Y_z1m1_temp = Y_z1m1_temp + 0.5 * (M_z1_temp * z1 + M_z1_temp^{2})
+        Y_z0m0_temp = Y_z0m0_temp + 0.3 * (M_z0_temp * z0 + M_z0_temp^{2})
+        Y_z1m0_temp = Y_z1m0_temp + 0.3 * (M_z0_temp * z1 + M_z0_temp^{2})
+        Y_z1m1_temp = Y_z1m1_temp + 0.3 * (M_z1_temp * z1 + M_z1_temp^{2})
       }
       
-      Y_z0m0[ind_V0] = rnorm(num_V0, Y_z0m0_temp, sqrt(sig2_Y))
-      Y_z1m0[ind_V0] = rnorm(num_V0, Y_z1m0_temp, sqrt(sig2_Y))
-      Y_z1m1[ind_V0] = rnorm(num_V0, Y_z1m1_temp, sqrt(sig2_Y))
+      Y_z0m0[ind_Uindex] = rnorm(num_Uindex, Y_z0m0_temp, sqrt(sig2_Y))
+      Y_z1m0[ind_Uindex] = rnorm(num_Uindex, Y_z1m0_temp, sqrt(sig2_Y))
+      Y_z1m1[ind_Uindex] = rnorm(num_Uindex, Y_z1m1_temp, sqrt(sig2_Y))
     }
   } else if (Ydist == "binary"){
     # Generate binary outcome Y
@@ -290,13 +409,13 @@ generate_data = function(J,       # the number of cluster
     Y_z1m0 = numeric(N)
     Y_z1m1 = numeric(N)
     for (j in 1:J) {
-      ind_V0 = which(V0 == j)
-      num_V0 = length(ind_V0)
+      ind_Uindex = which(Uindex == j)
+      num_Uindex = length(ind_Uindex)
       
-      C_temp = C[ind_V0,]
-      V_temp = V[ind_V0,]
-      M_z0_temp = M_z0[ind_V0]
-      M_z1_temp = M_z1[ind_V0]
+      C_temp = C[ind_Uindex,]
+      V_temp = V[ind_Uindex,]
+      M_z0_temp = M_z0[ind_Uindex]
+      M_z1_temp = M_z1[ind_Uindex]
       
       Y_z0m0_temp = beta_Y0 + z0 * beta_YZ + C_temp %*% beta_YC + V_temp %*% beta_YV + psi_Y[j]
       Y_z1m0_temp = beta_Y0 + z1 * beta_YZ + C_temp %*% beta_YC + V_temp %*% beta_YV + psi_Y[j]
@@ -306,13 +425,13 @@ generate_data = function(J,       # the number of cluster
         Y_z1m0_temp = Y_z1m0_temp + M_z0_temp * beta_YM
         Y_z1m1_temp = Y_z1m1_temp + M_z1_temp * beta_YM
       } else {
-        Y_z0m0_temp = Y_z0m0_temp + 0.5 * (M_z0_temp * z0 + M_z0_temp^{2})
-        Y_z1m0_temp = Y_z1m0_temp + 0.5 * (M_z0_temp * z1 + M_z0_temp^{2})
-        Y_z1m1_temp = Y_z1m1_temp + 0.5 * (M_z1_temp * z1 + M_z1_temp^{2})
+        Y_z0m0_temp = Y_z0m0_temp + 0.3 * (M_z0_temp * z0 + M_z0_temp^{2})
+        Y_z1m0_temp = Y_z1m0_temp + 0.3 * (M_z0_temp * z1 + M_z0_temp^{2})
+        Y_z1m1_temp = Y_z1m1_temp + 0.3 * (M_z1_temp * z1 + M_z1_temp^{2})
       }
-      Y_z0m0[ind_V0] = rbinom(num_V0, 1, pnorm(Y_z0m0_temp))
-      Y_z1m0[ind_V0] = rbinom(num_V0, 1, pnorm(Y_z1m0_temp))
-      Y_z1m1[ind_V0] = rbinom(num_V0, 1, pnorm(Y_z1m1_temp))
+      Y_z0m0[ind_Uindex] = rbinom(num_Uindex, 1, pnorm(Y_z0m0_temp))
+      Y_z1m0[ind_Uindex] = rbinom(num_Uindex, 1, pnorm(Y_z1m0_temp))
+      Y_z1m1[ind_Uindex] = rbinom(num_Uindex, 1, pnorm(Y_z1m1_temp))
     }
   }
   
@@ -324,7 +443,7 @@ generate_data = function(J,       # the number of cluster
   E_true = c(mean(Y_z1m1), mean(Y_z1m0), mean(Y_z0m0))
   # E_true = c(E_true[1]-E_true[2],E_true[2]-E_true[3],E_true[1]-E_true[3])
   
-  return(list(Y=Y, M=M, C=C, Z=Z, V=V, V0=V0, E_true=E_true))
+  return(list(Y=Y, M=M, C=C, Z=Z, V=V, Uindex=Uindex, E_true=E_true))
 }
 
 # -----------------------------------------------------------------------------
@@ -340,7 +459,7 @@ BBmediationPOST = function(object,  # object from rBARTmediation
   # object = BARTfit
   # C.test = C
   # V.test = V
-  # Uindex = V0
+  # Uindex = Vindex
   
   # matrix X to predict at
   X.test = cbind(C.test, V.test)
@@ -348,10 +467,17 @@ BBmediationPOST = function(object,  # object from rBARTmediation
   # Significance Level alpha
   level = 0.05
   
-  if (inherits(object,"rBARTmediation")) {
+  if (inherits(object$object0,"rBARTmediation")) {
+    object0 = object$object0
+    object1 = object$object1
+    Uindex0 = Uindex$Uindex0
+    Uindex1 = Uindex$Uindex1
+    Uindex = Uindex$Uindex
+    
     # Define POST function for continuous Y and continuous M using BB
     # predict(rBARTmediation)
-    BARTfitPRED = predict(object, X.test, Uindex)
+    # BARTfitPRED = predict(object, X.test, Uindex)
+    BARTfitPRED = predict(object0, object1, X.test, Uindex0, Uindex1)
     
     # Constants
     N = nrow(X.test)
@@ -963,9 +1089,10 @@ HBBmediationPOST = function(object, # object from predict(rBARTmediation)
                             saveall = FALSE,
                             CE = TRUE){
   # object = GLMfit
+  # object = BARTfit
   # C.test = C
   # V.test = V
-  # Uindex = V0
+  # Uindex = Vindex
   
   # matrix X to predict at
   X.test = cbind(C.test, V.test)
@@ -973,9 +1100,16 @@ HBBmediationPOST = function(object, # object from predict(rBARTmediation)
   # Significance Level alpha
   level = 0.05
   
-  if (inherits(object,"rBARTmediation")) {
+  if (inherits(object$object0,"rBARTmediation")) {
+    object0 = object$object0
+    object1 = object$object1
+    Uindex0 = Uindex$Uindex0
+    Uindex1 = Uindex$Uindex1
+    Uindex = Uindex$Uindex
+    
     # predict(rBARTmediation)
-    BARTfitPRED = predict(object, X.test, Uindex)
+    # BARTfitPRED = predict(object, X.test, Uindex)
+    BARTfitPRED = predict(object0, object1, X.test, Uindex0, Uindex1)
     
     # Constants
     N = nrow(X.test)
@@ -1624,6 +1758,12 @@ TSBBmediationPOST = function(object, # object from predict(rBARTmediation)
                              saveall = FALSE, 
                              chi = 1, zeta = 0.5,
                              CE = TRUE){
+  # object = GLMfit
+  # object = BARTfit
+  # C.test = C
+  # V.test = V
+  # Uindex = Vindex
+  
   # a constant to scale the desired rate of decay
   # chi = 1
   # a constant ratio of cluster-level confounders and individual-level confounders
@@ -1632,7 +1772,13 @@ TSBBmediationPOST = function(object, # object from predict(rBARTmediation)
   # Significance Level alpha
   level = 0.05
   
-  if (inherits(object,"rBARTmediation")) {
+  if (inherits(object$object0,"rBARTmediation")) {
+    object0 = object$object0
+    object1 = object$object1
+    Uindex0 = Uindex$Uindex0
+    Uindex1 = Uindex$Uindex1
+    Uindex = Uindex$Uindex
+    
     N = nrow(C.test)
     J = length(unique(Uindex))
     n_j = as.numeric(table(Uindex))
@@ -1642,22 +1788,31 @@ TSBBmediationPOST = function(object, # object from predict(rBARTmediation)
     UindexTSBB = numeric(NJ)
     X.testTSBB = matrix(nrow = NJ, ncol = p.test)
     for (l in 1:J) {
-      ind_V0_l = which(Uindex == l)
-      V_lunique = V.test[ind_V0_l[1],]
+      ind_Uindex_l = which(Uindex == l)
+      V_lunique = V.test[ind_Uindex_l[1],]
       Xtemp = matrix(nrow = N, ncol = p.test)
       for (j in 1:J) {
-        ind_V0_j = which(Uindex == j)
-        num_V0_j = length(ind_V0_j)
-        C_j = matrix(C.test[ind_V0_j,], nrow = num_V0_j)
-        V_l = matrix(rep(V_lunique,num_V0_j), nrow = num_V0_j, byrow = T)
-        Xtemp[ind_V0_j,] = cbind(C_j, V_l)
+        ind_Uindex_j = which(Uindex == j)
+        num_Uindex_j = length(ind_Uindex_j)
+        C_j = matrix(C.test[ind_Uindex_j,], nrow = num_Uindex_j)
+        V_l = matrix(rep(V_lunique,num_Uindex_j), nrow = num_Uindex_j, byrow = T)
+        Xtemp[ind_Uindex_j,] = cbind(C_j, V_l)
       }
-      UindexTSBB[((N*(l-1)+1):(N*l))] = l
+      # UindexTSBB[((N*(l-1)+1):(N*l))] = l
       X.testTSBB[((N*(l-1)+1):(N*l)),] = Xtemp
     }
+    UindexTSBB = rep(1:J, each=N)
+    
+    J0 = length(unique(Uindex0))
+    J1 = length(unique(Uindex1))
+    N0 = length(Uindex0)
+    N1 = length(Uindex1)
+    Uindex0TSBB = rep(1:J0, each=N)
+    Uindex1TSBB = rep(1:J1, each=N)
     
     # predict(rBARTmediation)
-    BARTfitPRED = predict(object, X.testTSBB, UindexTSBB)
+    # BARTfitPRED = predict(object, X.testTSBB, UindexTSBB)
+    BARTfitPRED = predict(object0, object1, X.testTSBB, Uindex0TSBB, Uindex1TSBB)
     
     # Constants
     n_MCMC = nrow(BARTfitPRED$Yz0m0.test)
@@ -1701,8 +1856,8 @@ TSBBmediationPOST = function(object, # object from predict(rBARTmediation)
       for (l in 1:J) {
         RhoOmegaPitemp = numeric(N)
         for (j in 1:J) {
-          ind_V0_j = which(Uindex == j)
-          RhoOmegaPitemp[ind_V0_j] = omePars[j,l]*c(piPars[[j]])
+          ind_Uindex_j = which(Uindex == j)
+          RhoOmegaPitemp[ind_Uindex_j] = omePars[j,l]*c(piPars[[j]])
         }
         RhoOmegaPi[((N*(l-1)+1):(N*l))] = rhoPars[l]*RhoOmegaPitemp
       }
@@ -1735,15 +1890,15 @@ TSBBmediationPOST = function(object, # object from predict(rBARTmediation)
     UindexTSBB = numeric(NJ)
     X.testTSBB = matrix(nrow = NJ, ncol = p.test)
     for (l in 1:J) {
-      ind_V0_l = which(Uindex == l)
-      V_lunique = V.test[ind_V0_l[1],]
+      ind_Uindex_l = which(Uindex == l)
+      V_lunique = V.test[ind_Uindex_l[1],]
       Xtemp = matrix(nrow = N, ncol = p.test)
       for (j in 1:J) {
-        ind_V0_j = which(Uindex == j)
-        num_V0_j = length(ind_V0_j)
-        C_j = matrix(C.test[ind_V0_j,], nrow = num_V0_j)
-        V_l = matrix(rep(V_lunique,num_V0_j), nrow = num_V0_j, byrow = T)
-        Xtemp[ind_V0_j,] = cbind(C_j, V_l)
+        ind_Uindex_j = which(Uindex == j)
+        num_Uindex_j = length(ind_Uindex_j)
+        C_j = matrix(C.test[ind_Uindex_j,], nrow = num_Uindex_j)
+        V_l = matrix(rep(V_lunique,num_Uindex_j), nrow = num_Uindex_j, byrow = T)
+        Xtemp[ind_Uindex_j,] = cbind(C_j, V_l)
       }
       UindexTSBB[((N*(l-1)+1):(N*l))] = l
       X.testTSBB[((N*(l-1)+1):(N*l)),] = Xtemp
@@ -1814,8 +1969,8 @@ TSBBmediationPOST = function(object, # object from predict(rBARTmediation)
       for (l in 1:J) {
         RhoOmegaPitemp = numeric(N)
         for (j in 1:J) {
-          ind_V0_j = which(Uindex == j)
-          RhoOmegaPitemp[ind_V0_j] = omePars[j,l]*c(piPars[[j]])
+          ind_Uindex_j = which(Uindex == j)
+          RhoOmegaPitemp[ind_Uindex_j] = omePars[j,l]*c(piPars[[j]])
         }
         RhoOmegaPi[((N*(l-1)+1):(N*l))] = rhoPars[l]*RhoOmegaPitemp
       }
@@ -1843,15 +1998,15 @@ TSBBmediationPOST = function(object, # object from predict(rBARTmediation)
     UindexTSBB = numeric(NJ)
     X.testTSBB = matrix(nrow = NJ, ncol = p.test)
     for (l in 1:J) {
-      ind_V0_l = which(Uindex == l)
-      V_lunique = V.test[ind_V0_l[1],]
+      ind_Uindex_l = which(Uindex == l)
+      V_lunique = V.test[ind_Uindex_l[1],]
       Xtemp = matrix(nrow = N, ncol = p.test)
       for (j in 1:J) {
-        ind_V0_j = which(Uindex == j)
-        num_V0_j = length(ind_V0_j)
-        C_j = matrix(C.test[ind_V0_j,], nrow = num_V0_j)
-        V_l = matrix(rep(V_lunique,num_V0_j), nrow = num_V0_j, byrow = T)
-        Xtemp[ind_V0_j,] = cbind(C_j, V_l)
+        ind_Uindex_j = which(Uindex == j)
+        num_Uindex_j = length(ind_Uindex_j)
+        C_j = matrix(C.test[ind_Uindex_j,], nrow = num_Uindex_j)
+        V_l = matrix(rep(V_lunique,num_Uindex_j), nrow = num_Uindex_j, byrow = T)
+        Xtemp[ind_Uindex_j,] = cbind(C_j, V_l)
       }
       UindexTSBB[((N*(l-1)+1):(N*l))] = l
       X.testTSBB[((N*(l-1)+1):(N*l)),] = Xtemp
@@ -1935,8 +2090,8 @@ TSBBmediationPOST = function(object, # object from predict(rBARTmediation)
           for (l in 1:J) {
             RhoOmegaPitemp = numeric(N)
             for (j in 1:J) {
-              ind_V0_j = which(Uindex == j)
-              RhoOmegaPitemp[ind_V0_j] = omePars[j,l]*c(piPars[[j]])
+              ind_Uindex_j = which(Uindex == j)
+              RhoOmegaPitemp[ind_Uindex_j] = omePars[j,l]*c(piPars[[j]])
             }
             RhoOmegaPi[((N*(l-1)+1):(N*l))] = rhoPars[l]*RhoOmegaPitemp
           }
@@ -2026,8 +2181,8 @@ TSBBmediationPOST = function(object, # object from predict(rBARTmediation)
           for (l in 1:J) {
             RhoOmegaPitemp = numeric(N)
             for (j in 1:J) {
-              ind_V0_j = which(Uindex == j)
-              RhoOmegaPitemp[ind_V0_j] = omePars[j,l]*c(piPars[[j]])
+              ind_Uindex_j = which(Uindex == j)
+              RhoOmegaPitemp[ind_Uindex_j] = omePars[j,l]*c(piPars[[j]])
             }
             RhoOmegaPi[((N*(l-1)+1):(N*l))] = rhoPars[l]*RhoOmegaPitemp
           }
@@ -2091,8 +2246,8 @@ TSBBmediationPOST = function(object, # object from predict(rBARTmediation)
           # draw M0_mc and M1_mc
           matX_z0_mc = cbind(z0, X.testTSBB)
           matX_z1_mc = cbind(z1, X.testTSBB)
-          Mhat_z0_mc = c(matX_z0_mc %*% MbetaPars + Mpsi_N) # rnorm(num_V0_j) * Mpsi_N)
-          Mhat_z1_mc = c(matX_z1_mc %*% MbetaPars + Mpsi_N) # rnorm(num_V0_j) * Mpsi_N)
+          Mhat_z0_mc = c(matX_z0_mc %*% MbetaPars + Mpsi_N) # rnorm(num_Uindex_j) * Mpsi_N)
+          Mhat_z1_mc = c(matX_z1_mc %*% MbetaPars + Mpsi_N) # rnorm(num_Uindex_j) * Mpsi_N)
           
           # https://mc-stan.org/docs/functions-reference/ordered-logistic-distribution.html
           # Ordered logistic distribution: Probability mass function
@@ -2131,8 +2286,8 @@ TSBBmediationPOST = function(object, # object from predict(rBARTmediation)
           for (l in 1:J) {
             RhoOmegaPitemp = numeric(N)
             for (j in 1:J) {
-              ind_V0_j = which(Uindex == j)
-              RhoOmegaPitemp[ind_V0_j] = omePars[j,l]*c(piPars[[j]])
+              ind_Uindex_j = which(Uindex == j)
+              RhoOmegaPitemp[ind_Uindex_j] = omePars[j,l]*c(piPars[[j]])
             }
             RhoOmegaPi[((N*(l-1)+1):(N*l))] = rhoPars[l]*RhoOmegaPitemp
           }
@@ -2196,8 +2351,8 @@ TSBBmediationPOST = function(object, # object from predict(rBARTmediation)
           # draw M0_mc and M1_mc
           matX_z0_mc = cbind(z0, X.testTSBB)
           matX_z1_mc = cbind(z1, X.testTSBB)
-          Mhat_z0_mc = c(matX_z0_mc %*% MbetaPars + Mpsi_N) # rnorm(num_V0_j) * Mpsi_N)
-          Mhat_z1_mc = c(matX_z1_mc %*% MbetaPars + Mpsi_N) # rnorm(num_V0_j) * Mpsi_N)
+          Mhat_z0_mc = c(matX_z0_mc %*% MbetaPars + Mpsi_N) # rnorm(num_Uindex_j) * Mpsi_N)
+          Mhat_z1_mc = c(matX_z1_mc %*% MbetaPars + Mpsi_N) # rnorm(num_Uindex_j) * Mpsi_N)
           M0_mc = rpois(NJ,Mhat_z0_mc)
           M1_mc = rpois(NJ,Mhat_z1_mc)
           
@@ -2224,8 +2379,8 @@ TSBBmediationPOST = function(object, # object from predict(rBARTmediation)
           for (l in 1:J) {
             RhoOmegaPitemp = numeric(N)
             for (j in 1:J) {
-              ind_V0_j = which(Uindex == j)
-              RhoOmegaPitemp[ind_V0_j] = omePars[j,l]*c(piPars[[j]])
+              ind_Uindex_j = which(Uindex == j)
+              RhoOmegaPitemp[ind_Uindex_j] = omePars[j,l]*c(piPars[[j]])
             }
             RhoOmegaPi[((N*(l-1)+1):(N*l))] = rhoPars[l]*RhoOmegaPitemp
           }
@@ -2310,8 +2465,8 @@ TSBBmediationPOST = function(object, # object from predict(rBARTmediation)
           for (l in 1:J) {
             RhoOmegaPitemp = numeric(N)
             for (j in 1:J) {
-              ind_V0_j = which(Uindex == j)
-              RhoOmegaPitemp[ind_V0_j] = omePars[j,l]*c(piPars[[j]])
+              ind_Uindex_j = which(Uindex == j)
+              RhoOmegaPitemp[ind_Uindex_j] = omePars[j,l]*c(piPars[[j]])
             }
             RhoOmegaPi[((N*(l-1)+1):(N*l))] = rhoPars[l]*RhoOmegaPitemp
           }
@@ -2420,7 +2575,7 @@ TSBBmediationPOSTsim = function(object, # object from predict(rBARTmediation)
   # object = GLMfit
   # C.test = C
   # V.test = V
-  # Uindex = V0
+  # Uindex = Uindex
   # esttype = "mean"
   # saveall = FALSE
   # list_chi = c(1e-2, 1e-1, 1, 1e1, 1e2)
@@ -2430,63 +2585,78 @@ TSBBmediationPOSTsim = function(object, # object from predict(rBARTmediation)
   # Significance Level alpha
   level = 0.05
   
-  N = nrow(C.test)
-  J = length(unique(Uindex))
-  n_j = as.numeric(table(Uindex))
-  p.test = ncol(C.test) + ncol(V.test)
-  NJ = N * J
-  
-  UindexTSBB = numeric(NJ)
-  X.testTSBB = matrix(nrow = NJ, ncol = p.test)
-  for (l in 1:J) {
-    ind_V0_l = which(Uindex == l)
-    V_lunique = V.test[ind_V0_l[1],]
-    Xtemp = matrix(nrow = N, ncol = p.test)
-    for (j in 1:J) {
-      ind_V0_j = which(Uindex == j)
-      num_V0_j = length(ind_V0_j)
-      C_j = matrix(C.test[ind_V0_j,], nrow = num_V0_j)
-      V_l = matrix(rep(V_lunique,num_V0_j), nrow = num_V0_j, byrow = T)
-      Xtemp[ind_V0_j,] = cbind(C_j, V_l)
+  if (inherits(object$object0,"rBARTmediation")) {
+    object0 = object$object0
+    object1 = object$object1
+    Uindex0 = Uindex$Uindex0
+    Uindex1 = Uindex$Uindex1
+    Uindex = Uindex$Uindex
+    
+    N = nrow(C.test)
+    J = length(unique(Uindex))
+    n_j = as.numeric(table(Uindex))
+    p.test = ncol(C.test) + ncol(V.test)
+    NJ = N * J
+    
+    UindexTSBB = numeric(NJ)
+    X.testTSBB = matrix(nrow = NJ, ncol = p.test)
+    for (l in 1:J) {
+      ind_Uindex_l = which(Uindex == l)
+      V_lunique = V.test[ind_Uindex_l[1],]
+      Xtemp = matrix(nrow = N, ncol = p.test)
+      for (j in 1:J) {
+        ind_Uindex_j = which(Uindex == j)
+        num_Uindex_j = length(ind_Uindex_j)
+        C_j = matrix(C.test[ind_Uindex_j,], nrow = num_Uindex_j)
+        V_l = matrix(rep(V_lunique,num_Uindex_j), nrow = num_Uindex_j, byrow = T)
+        Xtemp[ind_Uindex_j,] = cbind(C_j, V_l)
+      }
+      # UindexTSBB[((N*(l-1)+1):(N*l))] = l
+      X.testTSBB[((N*(l-1)+1):(N*l)),] = Xtemp
     }
-    UindexTSBB[((N*(l-1)+1):(N*l))] = l
-    X.testTSBB[((N*(l-1)+1):(N*l)),] = Xtemp
-  }
-  
-  # Parameters for cluster-level confounder
-  a_rho = rep(1,J)
-  
-  # Distances
-  # \lambda_{lj}^{\oemga} = \alpha_{l}^{\oemga} \dist_{lj}: adding additional "pseudosubjects
-  tau_ome = 1 # TSBB
-  # tau_ome = 100 # TSBB
-  # alpha_ome = rep(tau_ome,J)
-  # alpha_ome = n_j/N
-  alpha_ome = N/n_j * tau_ome
-  
-  # j (row) times l (column)
-  l_chi = length(list_chi)
-  l_zeta = length(list_zeta)
-  l_chizeta = l_chi * l_zeta
-  
-  # ------------------------------------------------------------------------------
-  # TSBB
-  Vxi_dist = matrix_dist(scale(V.test),Uindex)
-  Cxi_dist = matrix_dist(scale(C.test),Uindex)
-  list_xi_distPOST = list()
-  k = 1
-  for (chi in list_chi){
-    for (zeta in list_zeta){
-      xi_dist = exp(-((zeta)*Vxi_dist + (1-zeta)*Cxi_dist)/chi)
-      xi_distPOST = sapply(1:J, function(l) alpha_ome[l]*xi_dist[,l]) + diag(J)
-      list_xi_distPOST[[k]] = xi_distPOST
-      k = k + 1
+    UindexTSBB = rep(1:J, each=N)
+    
+    J0 = length(unique(Uindex0))
+    J1 = length(unique(Uindex1))
+    N0 = length(Uindex0)
+    N1 = length(Uindex1)
+    Uindex0TSBB = rep(1:J0, each=N)
+    Uindex1TSBB = rep(1:J1, each=N)
+    
+    # Parameters for cluster-level confounder
+    a_rho = rep(1,J)
+    
+    # Distances
+    # \lambda_{lj}^{\oemga} = \alpha_{l}^{\oemga} \dist_{lj}: adding additional "pseudosubjects
+    tau_ome = 1 # TSBB
+    # tau_ome = 100 # TSBB
+    # alpha_ome = rep(tau_ome,J)
+    # alpha_ome = n_j/N
+    alpha_ome = N/n_j * tau_ome
+    
+    # j (row) times l (column)
+    l_chi = length(list_chi)
+    l_zeta = length(list_zeta)
+    l_chizeta = l_chi * l_zeta
+    
+    # ------------------------------------------------------------------------------
+    # TSBB
+    Vxi_dist = matrix_dist(scale(V.test),Uindex)
+    Cxi_dist = matrix_dist(scale(C.test),Uindex)
+    list_xi_distPOST = list()
+    k = 1
+    for (chi in list_chi){
+      for (zeta in list_zeta){
+        xi_dist = exp(-((zeta)*Vxi_dist + (1-zeta)*Cxi_dist)/chi)
+        xi_distPOST = sapply(1:J, function(l) alpha_ome[l]*xi_dist[,l]) + diag(J)
+        list_xi_distPOST[[k]] = xi_distPOST
+        k = k + 1
+      }
     }
-  }
-  
-  if (inherits(object,"rBARTmediation")) {
+    
     # predict(rBARTmediation)
-    BARTfitPRED = predict(object, X.testTSBB, UindexTSBB)
+    # BARTfitPRED = predict(object, X.testTSBB, UindexTSBB)
+    BARTfitPRED = predict(object0, object1, X.testTSBB, Uindex0TSBB, Uindex1TSBB)
     
     # Constants
     n_MCMC = nrow(BARTfitPRED$Yz0m0.test)
@@ -2520,8 +2690,8 @@ TSBBmediationPOSTsim = function(object, # object from predict(rBARTmediation)
           for (l in 1:J) {
             RhoOmegaPitemp = numeric(N)
             for (j in 1:J) {
-              ind_V0_j = which(Uindex == j)
-              RhoOmegaPitemp[ind_V0_j] = omePars[j,l]*c(piPars[[j]])
+              ind_Uindex_j = which(Uindex == j)
+              RhoOmegaPitemp[ind_Uindex_j] = omePars[j,l]*c(piPars[[j]])
             }
             RhoOmegaPi[((N*(l-1)+1):(N*l))] = rhoPars[l]*RhoOmegaPitemp
           }
@@ -2543,7 +2713,61 @@ TSBBmediationPOSTsim = function(object, # object from predict(rBARTmediation)
       }
     }
   } else if (inherits(object,"rGLMmediation")) {
+    N = nrow(C.test)
+    J = length(unique(Uindex))
+    n_j = as.numeric(table(Uindex))
+    p.test = ncol(C.test) + ncol(V.test)
+    NJ = N * J
+    
     n_MCMC = object$constants$n_MCMC
+    
+    UindexTSBB = numeric(NJ)
+    X.testTSBB = matrix(nrow = NJ, ncol = p.test)
+    for (l in 1:J) {
+      ind_Uindex_l = which(Uindex == l)
+      V_lunique = V.test[ind_Uindex_l[1],]
+      Xtemp = matrix(nrow = N, ncol = p.test)
+      for (j in 1:J) {
+        ind_Uindex_j = which(Uindex == j)
+        num_Uindex_j = length(ind_Uindex_j)
+        C_j = matrix(C.test[ind_Uindex_j,], nrow = num_Uindex_j)
+        V_l = matrix(rep(V_lunique,num_Uindex_j), nrow = num_Uindex_j, byrow = T)
+        Xtemp[ind_Uindex_j,] = cbind(C_j, V_l)
+      }
+      UindexTSBB[((N*(l-1)+1):(N*l))] = l
+      X.testTSBB[((N*(l-1)+1):(N*l)),] = Xtemp
+    }
+    
+    # Parameters for cluster-level confounder
+    a_rho = rep(1,J)
+    
+    # Distances
+    # \lambda_{lj}^{\oemga} = \alpha_{l}^{\oemga} \dist_{lj}: adding additional "pseudosubjects
+    tau_ome = 1 # TSBB
+    # tau_ome = 100 # TSBB
+    # alpha_ome = rep(tau_ome,J)
+    # alpha_ome = n_j/N
+    alpha_ome = N/n_j * tau_ome
+    
+    # j (row) times l (column)
+    l_chi = length(list_chi)
+    l_zeta = length(list_zeta)
+    l_chizeta = l_chi * l_zeta
+    
+    # ------------------------------------------------------------------------------
+    # TSBB
+    Vxi_dist = matrix_dist(scale(V.test),Uindex)
+    Cxi_dist = matrix_dist(scale(C.test),Uindex)
+    list_xi_distPOST = list()
+    k = 1
+    for (chi in list_chi){
+      for (zeta in list_zeta){
+        xi_dist = exp(-((zeta)*Vxi_dist + (1-zeta)*Cxi_dist)/chi)
+        xi_distPOST = sapply(1:J, function(l) alpha_ome[l]*xi_dist[,l]) + diag(J)
+        list_xi_distPOST[[k]] = xi_distPOST
+        k = k + 1
+      }
+    }
     
     # Define interation check
     iter_check = floor(n_MCMC/10)
@@ -2612,8 +2836,8 @@ TSBBmediationPOSTsim = function(object, # object from predict(rBARTmediation)
               for (l in 1:J) {
                 RhoOmegaPitemp = numeric(N)
                 for (j in 1:J) {
-                  ind_V0_j = which(Uindex == j)
-                  RhoOmegaPitemp[ind_V0_j] = omePars[j,l]*c(piPars[[j]])
+                  ind_Uindex_j = which(Uindex == j)
+                  RhoOmegaPitemp[ind_Uindex_j] = omePars[j,l]*c(piPars[[j]])
                 }
                 RhoOmegaPi[((N*(l-1)+1):(N*l))] = rhoPars[l]*RhoOmegaPitemp
               }
@@ -2690,8 +2914,8 @@ TSBBmediationPOSTsim = function(object, # object from predict(rBARTmediation)
               for (l in 1:J) {
                 RhoOmegaPitemp = numeric(N)
                 for (j in 1:J) {
-                  ind_V0_j = which(Uindex == j)
-                  RhoOmegaPitemp[ind_V0_j] = omePars[j,l]*c(piPars[[j]])
+                  ind_Uindex_j = which(Uindex == j)
+                  RhoOmegaPitemp[ind_Uindex_j] = omePars[j,l]*c(piPars[[j]])
                 }
                 RhoOmegaPi[((N*(l-1)+1):(N*l))] = rhoPars[l]*RhoOmegaPitemp
               }
@@ -2762,8 +2986,8 @@ TSBBmediationPOSTsim = function(object, # object from predict(rBARTmediation)
               for (l in 1:J) {
                 RhoOmegaPitemp = numeric(N)
                 for (j in 1:J) {
-                  ind_V0_j = which(Uindex == j)
-                  RhoOmegaPitemp[ind_V0_j] = omePars[j,l]*c(piPars[[j]])
+                  ind_Uindex_j = which(Uindex == j)
+                  RhoOmegaPitemp[ind_Uindex_j] = omePars[j,l]*c(piPars[[j]])
                 }
                 RhoOmegaPi[((N*(l-1)+1):(N*l))] = rhoPars[l]*RhoOmegaPitemp
               }
@@ -2876,7 +3100,7 @@ CcondTSBBmediationPOST = function(object, # object from rBARTmediation
   # C.test = C
   # V.test = V
   # cSindex = S0C5
-  # Uindex = V0
+  # Uindex = Uindex
   
   # a constant to scale the desired rate of decay
   # chi = 1
@@ -2886,7 +3110,13 @@ CcondTSBBmediationPOST = function(object, # object from rBARTmediation
   # Significance Level alpha
   level = 0.05
   
-  if (inherits(object,"rBARTmediation")) {
+  if (inherits(object$object0,"rBARTmediation")) {
+    object0 = object$object0
+    object1 = object$object1
+    Uindex0 = Uindex$Uindex0
+    Uindex1 = Uindex$Uindex1
+    Uindex = Uindex$Uindex
+    
     N = nrow(C.test)
     J = length(unique(Uindex))
     n_j = as.numeric(table(Uindex))
@@ -2896,23 +3126,32 @@ CcondTSBBmediationPOST = function(object, # object from rBARTmediation
     UindexTSBB = numeric(NJ)
     X.testTSBB = matrix(nrow = NJ, ncol = p.test)
     for (l in 1:J) {
-      ind_V0_l = which(Uindex == l)
-      V_lunique = V.test[ind_V0_l[1],]
+      ind_Uindex_l = which(Uindex == l)
+      V_lunique = V.test[ind_Uindex_l[1],]
       Xtemp = matrix(nrow = N, ncol = p.test)
       for (j in 1:J) {
-        ind_V0_j = which(Uindex == j)
-        num_V0_j = length(ind_V0_j)
-        C_j = matrix(C.test[ind_V0_j,], nrow = num_V0_j)
-        V_l = matrix(rep(V_lunique,num_V0_j), nrow = num_V0_j, byrow = T)
-        Xtemp[ind_V0_j,] = cbind(C_j, V_l)
+        ind_Uindex_j = which(Uindex == j)
+        num_Uindex_j = length(ind_Uindex_j)
+        C_j = matrix(C.test[ind_Uindex_j,], nrow = num_Uindex_j)
+        V_l = matrix(rep(V_lunique,num_Uindex_j), nrow = num_Uindex_j, byrow = T)
+        Xtemp[ind_Uindex_j,] = cbind(C_j, V_l)
       }
-      UindexTSBB[((N*(l-1)+1):(N*l))] = l
+      # UindexTSBB[((N*(l-1)+1):(N*l))] = l
       X.testTSBB[((N*(l-1)+1):(N*l)),] = Xtemp
     }
+    UindexTSBB = rep(1:J, each=N)
     cSindexTSBB = rep(cSindex,J)
     
+    J0 = length(unique(Uindex0))
+    J1 = length(unique(Uindex1))
+    N0 = length(Uindex0)
+    N1 = length(Uindex1)
+    Uindex0TSBB = rep(1:J0, each=N)
+    Uindex1TSBB = rep(1:J1, each=N)
+    
     # predict(rBARTmediation)
-    BARTfitPRED = predict(object, X.testTSBB, UindexTSBB)
+    # BARTfitPRED = predict(object, X.testTSBB, UindexTSBB)
+    BARTfitPRED = predict(object0, object1, X.testTSBB, Uindex0TSBB, Uindex1TSBB)
     
     # Constants
     n_MCMC = nrow(BARTfitPRED$Yz0m0.test)
@@ -2956,8 +3195,8 @@ CcondTSBBmediationPOST = function(object, # object from rBARTmediation
       for (l in 1:J) {
         RhoOmegaPitemp = numeric(N)
         for (j in 1:J) {
-          ind_V0_j = which(Uindex == j)
-          RhoOmegaPitemp[ind_V0_j] = omePars[j,l]*c(piPars[[j]])
+          ind_Uindex_j = which(Uindex == j)
+          RhoOmegaPitemp[ind_Uindex_j] = omePars[j,l]*c(piPars[[j]])
         }
         RhoOmegaPi[((N*(l-1)+1):(N*l))] = rhoPars[l]*RhoOmegaPitemp
       }
@@ -2986,15 +3225,15 @@ CcondTSBBmediationPOST = function(object, # object from rBARTmediation
     UindexTSBB = numeric(NJ)
     X.testTSBB = matrix(nrow = NJ, ncol = p.test)
     for (l in 1:J) {
-      ind_V0_l = which(Uindex == l)
-      V_lunique = V.test[ind_V0_l[1],]
+      ind_Uindex_l = which(Uindex == l)
+      V_lunique = V.test[ind_Uindex_l[1],]
       Xtemp = matrix(nrow = N, ncol = p.test)
       for (j in 1:J) {
-        ind_V0_j = which(Uindex == j)
-        num_V0_j = length(ind_V0_j)
-        C_j = matrix(C.test[ind_V0_j,], nrow = num_V0_j)
-        V_l = matrix(rep(V_lunique,num_V0_j), nrow = num_V0_j, byrow = T)
-        Xtemp[ind_V0_j,] = cbind(C_j, V_l)
+        ind_Uindex_j = which(Uindex == j)
+        num_Uindex_j = length(ind_Uindex_j)
+        C_j = matrix(C.test[ind_Uindex_j,], nrow = num_Uindex_j)
+        V_l = matrix(rep(V_lunique,num_Uindex_j), nrow = num_Uindex_j, byrow = T)
+        Xtemp[ind_Uindex_j,] = cbind(C_j, V_l)
       }
       UindexTSBB[((N*(l-1)+1):(N*l))] = l
       X.testTSBB[((N*(l-1)+1):(N*l)),] = Xtemp
@@ -3080,8 +3319,8 @@ CcondTSBBmediationPOST = function(object, # object from rBARTmediation
           for (l in 1:J) {
             RhoOmegaPitemp = numeric(N)
             for (j in 1:J) {
-              ind_V0_j = which(Uindex == j)
-              RhoOmegaPitemp[ind_V0_j] = omePars[j,l]*c(piPars[[j]])
+              ind_Uindex_j = which(Uindex == j)
+              RhoOmegaPitemp[ind_Uindex_j] = omePars[j,l]*c(piPars[[j]])
             }
             RhoOmegaPi[((N*(l-1)+1):(N*l))] = rhoPars[l]*RhoOmegaPitemp
           }
@@ -3172,8 +3411,8 @@ CcondTSBBmediationPOST = function(object, # object from rBARTmediation
           for (l in 1:J) {
             RhoOmegaPitemp = numeric(N)
             for (j in 1:J) {
-              ind_V0_j = which(Uindex == j)
-              RhoOmegaPitemp[ind_V0_j] = omePars[j,l]*c(piPars[[j]])
+              ind_Uindex_j = which(Uindex == j)
+              RhoOmegaPitemp[ind_Uindex_j] = omePars[j,l]*c(piPars[[j]])
             }
             RhoOmegaPi[((N*(l-1)+1):(N*l))] = rhoPars[l]*RhoOmegaPitemp
           }
@@ -3281,7 +3520,7 @@ VcondTSBBmediationPOST = function(object, # object from rBARTmediation
   # C.test = C
   # V.test = V
   # vSindex = S_V3_0
-  # Uindex = V0
+  # Uindex = Uindex
   
   # a constant to scale the desired rate of decay
   # chi = 1
@@ -3291,7 +3530,13 @@ VcondTSBBmediationPOST = function(object, # object from rBARTmediation
   # Significance Level alpha
   level = 0.05
   
-  if (inherits(object,"rBARTmediation")) {
+  if (inherits(object$object0,"rBARTmediation")) {
+    object0 = object$object0
+    object1 = object$object1
+    Uindex0 = Uindex$Uindex0
+    Uindex1 = Uindex$Uindex1
+    Uindex = Uindex$Uindex
+    
     N = nrow(C.test)
     J = length(unique(Uindex))
     n_j = as.numeric(table(Uindex))
@@ -3301,23 +3546,32 @@ VcondTSBBmediationPOST = function(object, # object from rBARTmediation
     UindexTSBB = numeric(NJ)
     X.testTSBB = matrix(nrow = NJ, ncol = p.test)
     for (l in 1:J) {
-      ind_V0_l = which(Uindex == l)
-      V_lunique = V.test[ind_V0_l[1],]
+      ind_Uindex_l = which(Uindex == l)
+      V_lunique = V.test[ind_Uindex_l[1],]
       Xtemp = matrix(nrow = N, ncol = p.test)
       for (j in 1:J) {
-        ind_V0_j = which(Uindex == j)
-        num_V0_j = length(ind_V0_j)
-        C_j = matrix(C.test[ind_V0_j,], nrow = num_V0_j)
-        V_l = matrix(rep(V_lunique,num_V0_j), nrow = num_V0_j, byrow = T)
-        Xtemp[ind_V0_j,] = cbind(C_j, V_l)
+        ind_Uindex_j = which(Uindex == j)
+        num_Uindex_j = length(ind_Uindex_j)
+        C_j = matrix(C.test[ind_Uindex_j,], nrow = num_Uindex_j)
+        V_l = matrix(rep(V_lunique,num_Uindex_j), nrow = num_Uindex_j, byrow = T)
+        Xtemp[ind_Uindex_j,] = cbind(C_j, V_l)
       }
-      UindexTSBB[((N*(l-1)+1):(N*l))] = l
+      # UindexTSBB[((N*(l-1)+1):(N*l))] = l
       X.testTSBB[((N*(l-1)+1):(N*l)),] = Xtemp
     }
+    UindexTSBB = rep(1:J, each=N)
     vSindexTSBB = rep(vSindex, each=J)
     
+    J0 = length(unique(Uindex0))
+    J1 = length(unique(Uindex1))
+    N0 = length(Uindex0)
+    N1 = length(Uindex1)
+    Uindex0TSBB = rep(1:J0, each=N)
+    Uindex1TSBB = rep(1:J1, each=N)
+    
     # predict(rBARTmediation)
-    BARTfitPRED = predict(object, X.testTSBB, UindexTSBB)
+    # BARTfitPRED = predict(object, X.testTSBB, UindexTSBB)
+    BARTfitPRED = predict(object0, object1, X.testTSBB, Uindex0TSBB, Uindex1TSBB)
     
     # Constants
     n_MCMC = nrow(BARTfitPRED$Yz0m0.test)
@@ -3361,8 +3615,8 @@ VcondTSBBmediationPOST = function(object, # object from rBARTmediation
       for (l in 1:J) {
         RhoOmegaPitemp = numeric(N)
         for (j in 1:J) {
-          ind_V0_j = which(Uindex == j)
-          RhoOmegaPitemp[ind_V0_j] = omePars[j,l]*c(piPars[[j]])
+          ind_Uindex_j = which(Uindex == j)
+          RhoOmegaPitemp[ind_Uindex_j] = omePars[j,l]*c(piPars[[j]])
         }
         RhoOmegaPi[((N*(l-1)+1):(N*l))] = rhoPars[l]*RhoOmegaPitemp
       }
@@ -3391,15 +3645,15 @@ VcondTSBBmediationPOST = function(object, # object from rBARTmediation
     UindexTSBB = numeric(NJ)
     X.testTSBB = matrix(nrow = NJ, ncol = p.test)
     for (l in 1:J) {
-      ind_V0_l = which(Uindex == l)
-      V_lunique = V.test[ind_V0_l[1],]
+      ind_Uindex_l = which(Uindex == l)
+      V_lunique = V.test[ind_Uindex_l[1],]
       Xtemp = matrix(nrow = N, ncol = p.test)
       for (j in 1:J) {
-        ind_V0_j = which(Uindex == j)
-        num_V0_j = length(ind_V0_j)
-        C_j = matrix(C.test[ind_V0_j,], nrow = num_V0_j)
-        V_l = matrix(rep(V_lunique,num_V0_j), nrow = num_V0_j, byrow = T)
-        Xtemp[ind_V0_j,] = cbind(C_j, V_l)
+        ind_Uindex_j = which(Uindex == j)
+        num_Uindex_j = length(ind_Uindex_j)
+        C_j = matrix(C.test[ind_Uindex_j,], nrow = num_Uindex_j)
+        V_l = matrix(rep(V_lunique,num_Uindex_j), nrow = num_Uindex_j, byrow = T)
+        Xtemp[ind_Uindex_j,] = cbind(C_j, V_l)
       }
       UindexTSBB[((N*(l-1)+1):(N*l))] = l
       X.testTSBB[((N*(l-1)+1):(N*l)),] = Xtemp
@@ -3485,8 +3739,8 @@ VcondTSBBmediationPOST = function(object, # object from rBARTmediation
           for (l in 1:J) {
             RhoOmegaPitemp = numeric(N)
             for (j in 1:J) {
-              ind_V0_j = which(Uindex == j)
-              RhoOmegaPitemp[ind_V0_j] = omePars[j,l]*c(piPars[[j]])
+              ind_Uindex_j = which(Uindex == j)
+              RhoOmegaPitemp[ind_Uindex_j] = omePars[j,l]*c(piPars[[j]])
             }
             RhoOmegaPi[((N*(l-1)+1):(N*l))] = rhoPars[l]*RhoOmegaPitemp
           }
@@ -3577,8 +3831,8 @@ VcondTSBBmediationPOST = function(object, # object from rBARTmediation
           for (l in 1:J) {
             RhoOmegaPitemp = numeric(N)
             for (j in 1:J) {
-              ind_V0_j = which(Uindex == j)
-              RhoOmegaPitemp[ind_V0_j] = omePars[j,l]*c(piPars[[j]])
+              ind_Uindex_j = which(Uindex == j)
+              RhoOmegaPitemp[ind_Uindex_j] = omePars[j,l]*c(piPars[[j]])
             }
             RhoOmegaPi[((N*(l-1)+1):(N*l))] = rhoPars[l]*RhoOmegaPitemp
           }
@@ -3674,34 +3928,38 @@ VcondTSBBmediationPOST = function(object, # object from rBARTmediation
 # -----------------------------------------------------------------------------
 # -----------------------------------------------------------------------------
 # Define MCMC function for continuous Y and continuous M
-GLMmediationMCMCconYconM = function(Y, M, Z, C, V, V0,
+GLMmediationMCMCconYconM = function(Y, M, C, V, Uindex,
                                     gibbs_iter = gibbs_iter, 
                                     gibbs_burnin = gibbs_burnin, 
                                     gibbs_thin = gibbs_thin){
   
   # Define the number of clusters
-  uniqueV0 = sort(unique(V0))
-  J = length(uniqueV0)
-  V0 = apply(sapply(1:J, function(l) ifelse(V0==uniqueV0[l],l,0)),1,sum)
+  uniqueUindex = sort(unique(Uindex))
+  J = length(uniqueUindex)
+  Uindex = apply(sapply(1:J, function(l) ifelse(Uindex==uniqueUindex[l],l,0)),1,sum)
   
   # Define the number of observations
   N = length(Y)
   
   # Define the number of observations for each cluster
-  n_j = as.numeric(table(V0))
+  n_j = as.numeric(table(Uindex))
   
   # Data reordering
-  order_V0 = order(V0)
-  Y = Y[order_V0]
-  M = M[order_V0]
-  Z = Z[order_V0]
-  C = C[order_V0,]
-  V = V[order_V0,]
-  V0 = V0[order_V0]
+  order_Uindex = order(Uindex)
+  Y = Y[order_Uindex]
+  M = M[order_Uindex]
+  # Z = Z[order_Uindex]
+  C = C[order_Uindex,]
+  V = V[order_Uindex,]
+  Uindex = Uindex[order_Uindex]
   
   # Set initial values ----------------------------------------------------------
-  matX = cbind(1, Z, C, V) # no intercept for proportional odds model
-  matM = cbind(1, M, Z, C, V)
+  # with Z ----------------------------------------------------------------------
+  # matX = cbind(1, Z, C, V)
+  # matM = cbind(1, M, Z, C, V)
+  # without Z -------------------------------------------------------------------
+  matX = cbind(1, C, V)
+  matM = cbind(1, M, C, V)
   
   pm = ncol(matX)
   py = ncol(matM)
@@ -3719,7 +3977,7 @@ GLMmediationMCMCconYconM = function(Y, M, Z, C, V, V0,
     int<lower=1> pm;  // Number of confounders for mediator glm
     int<lower=1> py;  // Number of confounders for outcome glm
     
-    int<lower=1, upper=J> V0[N]; // Cluster assignment for each observation
+    int<lower=1, upper=J> Uindex[N]; // Cluster assignment for each observation
     row_vector[pm] matX[N];  // design matrix for mediator glm
     row_vector[py] matM[N];  // design matrix for outcome glm
     real M[N];  // Mediator
@@ -3747,17 +4005,17 @@ GLMmediationMCMCconYconM = function(Y, M, Z, C, V, V0,
     // priors
     Mpsi ~ std_normal();
     Ypsi ~ std_normal();
-    Mbeta ~ normal(0, 5);
-    Ybeta ~ normal(0, 5);
-    Msig2 ~ cauchy(0, 5);
-    Ysig2 ~ cauchy(0, 5);
+    // Mbeta ~ normal(0, 5);
+    // Msig2 ~ cauchy(0, 5);
+    // Ybeta ~ normal(0, 5);
+    // Ysig2 ~ cauchy(0, 5);
     
     // GLM likelihood
     vector[N] Mhat;
     vector[N] Yhat;
     for (i in 1:N) {
-      Mhat[i] = matX[i] * Mbeta + Mpsi[V0[i]] * sqrt(YMpsi[2,2]);
-      Yhat[i] = matM[i] * Ybeta + Ypsi[V0[i]] * sqrt(YMpsi[1,1]);
+      Mhat[i] = matX[i] * Mbeta + Mpsi[Uindex[i]] * sqrt(YMpsi[2,2]);
+      Yhat[i] = matM[i] * Ybeta + Ypsi[Uindex[i]] * sqrt(YMpsi[1,1]);
     }
     M ~ normal(Mhat, sqrt(Msig2));
     Y ~ normal(Yhat, sqrt(Ysig2));
@@ -3766,10 +4024,10 @@ GLMmediationMCMCconYconM = function(Y, M, Z, C, V, V0,
   
   # -----------------------------------------------------------------------------
   # --------------------------------- Stan Data ---------------------------------
-  stan_data = list(Y = Y, M = M, V0 = V0, matX = matX, matM = matM)
+  stan_data = list(Y = Y, M = M, Uindex = Uindex, matX = matX, matM = matM)
   
-  stan_data$J = length(unique(V0))
-  stan_data$n_j = sapply(1:J, function(l) sum(V0==l))
+  stan_data$J = length(unique(Uindex))
+  stan_data$n_j = sapply(1:J, function(l) sum(Uindex==l))
   stan_data$N = sum(stan_data$n_j)
   stan_data$pm = ncol(stan_data$matX)
   stan_data$py = ncol(stan_data$matM)
@@ -3818,7 +4076,7 @@ GLMmediationMCMCconYconM = function(Y, M, Z, C, V, V0,
                    n_MCMC = n_MCMC)
   
   # Observed Data
-  obsdata = list(Y = Y, M = M, C = C, Z = Z, V = V, V0 = V0)
+  obsdata = list(Y = Y, M = M, C = C, Z = Z, V = V, Uindex = Uindex)
   
   # MCMC Posteriors
   MCMCposteriors = list(Ysig2Lists = Ysig2Lists,
@@ -3842,35 +4100,39 @@ GLMmediationMCMCconYconM = function(Y, M, Z, C, V, V0,
 }
 
 # Define MCMC function for continuous Y and binary M
-GLMmediationMCMCconYbinM = function(Y, M, Z, C, V, V0,
+GLMmediationMCMCconYbinM = function(Y, M, C, V, Uindex,
                                     gibbs_iter = gibbs_iter, 
                                     gibbs_burnin = gibbs_burnin, 
                                     gibbs_thin = gibbs_thin,
                                     modelM = modelM){
   
   # Define the number of clusters
-  uniqueV0 = sort(unique(V0))
-  J = length(uniqueV0)
-  V0 = apply(sapply(1:J, function(l) ifelse(V0==uniqueV0[l],l,0)),1,sum)
+  uniqueUindex = sort(unique(Uindex))
+  J = length(uniqueUindex)
+  Uindex = apply(sapply(1:J, function(l) ifelse(Uindex==uniqueUindex[l],l,0)),1,sum)
   
   # Define the number of observations
   N = length(Y)
   
   # Define the number of observations for each cluster
-  n_j = as.numeric(table(V0))
+  n_j = as.numeric(table(Uindex))
   
   # Data reordering
-  order_V0 = order(V0)
-  Y = Y[order_V0]
-  M = M[order_V0]
-  Z = Z[order_V0]
-  C = C[order_V0,]
-  V = V[order_V0,]
-  V0 = V0[order_V0]
+  order_Uindex = order(Uindex)
+  Y = Y[order_Uindex]
+  M = M[order_Uindex]
+  # Z = Z[order_Uindex]
+  C = C[order_Uindex,]
+  V = V[order_Uindex,]
+  Uindex = Uindex[order_Uindex]
   
   # Set initial values ----------------------------------------------------------
-  matX = cbind(1, Z, C, V) # no intercept for proportional odds model
-  matM = cbind(1, M, Z, C, V)
+  # with Z ----------------------------------------------------------------------
+  # matX = cbind(1, Z, C, V)
+  # matM = cbind(1, M, Z, C, V)
+  # without Z -------------------------------------------------------------------
+  matX = cbind(1, C, V)
+  matM = cbind(1, M, C, V)
   
   pm = ncol(matX)
   py = ncol(matM)
@@ -3889,7 +4151,7 @@ GLMmediationMCMCconYbinM = function(Y, M, Z, C, V, V0,
       int<lower=1> pm;  // Number of confounders for mediator glm
       int<lower=1> py;  // Number of confounders for outcome glm
       
-      int<lower=1, upper=J> V0[N]; // Cluster assignment for each observation
+      int<lower=1, upper=J> Uindex[N]; // Cluster assignment for each observation
       row_vector[pm] matX[N];  // design matrix for mediator glm
       row_vector[py] matM[N];  // design matrix for outcome glm
       int<lower=0, upper=1> M[N];  // Mediator
@@ -3916,16 +4178,16 @@ GLMmediationMCMCconYbinM = function(Y, M, Z, C, V, V0,
       // priors
       Mpsi ~ std_normal();
       Ypsi ~ std_normal();
-      Mbeta ~ normal(0, 5);
-      Ybeta ~ normal(0, 5);
-      Ysig2 ~ cauchy(0, 5);
+      // Mbeta ~ normal(0, 5);
+      // Ybeta ~ normal(0, 5);
+      // Ysig2 ~ cauchy(0, 5);
       
       // GLM likelihood
       vector[N] Mhat;
       vector[N] Yhat;
       for (i in 1:N) {
-        Mhat[i] = matX[i] * Mbeta + Mpsi[V0[i]] * sqrt(YMpsi[2,2]);
-        Yhat[i] = matM[i] * Ybeta + Ypsi[V0[i]] * sqrt(YMpsi[1,1]);
+        Mhat[i] = matX[i] * Mbeta + Mpsi[Uindex[i]] * sqrt(YMpsi[2,2]);
+        Yhat[i] = matM[i] * Ybeta + Ypsi[Uindex[i]] * sqrt(YMpsi[1,1]);
       }
       M ~ bernoulli(Phi(Mhat));
       Y ~ normal(Yhat, sqrt(Ysig2));
@@ -3940,7 +4202,7 @@ GLMmediationMCMCconYbinM = function(Y, M, Z, C, V, V0,
       int<lower=1> pm;  // Number of confounders for mediator glm
       int<lower=1> py;  // Number of confounders for outcome glm
       
-      int<lower=1, upper=J> V0[N]; // Cluster assignment for each observation
+      int<lower=1, upper=J> Uindex[N]; // Cluster assignment for each observation
       row_vector[pm] matX[N];  // design matrix for mediator glm
       row_vector[py] matM[N];  // design matrix for outcome glm
       int<lower=0, upper=1> M[N];  // Mediator
@@ -3967,16 +4229,16 @@ GLMmediationMCMCconYbinM = function(Y, M, Z, C, V, V0,
       // priors
       Mpsi ~ std_normal();
       Ypsi ~ std_normal();
-      Mbeta ~ normal(0, 5);
-      Ybeta ~ normal(0, 5);
-      Ysig2 ~ cauchy(0, 5);
+      // Mbeta ~ normal(0, 5);
+      // Ybeta ~ normal(0, 5);
+      // Ysig2 ~ cauchy(0, 5);
       
       // GLM likelihood
       vector[N] Mhat;
       vector[N] Yhat;
       for (i in 1:N) {
-        Mhat[i] = matX[i] * Mbeta + Mpsi[V0[i]] * sqrt(YMpsi[2,2]);
-        Yhat[i] = matM[i] * Ybeta + Ypsi[V0[i]] * sqrt(YMpsi[1,1]);
+        Mhat[i] = matX[i] * Mbeta + Mpsi[Uindex[i]] * sqrt(YMpsi[2,2]);
+        Yhat[i] = matM[i] * Ybeta + Ypsi[Uindex[i]] * sqrt(YMpsi[1,1]);
       }
       M ~ bernoulli_logit(Mhat);
       Y ~ normal(Yhat, sqrt(Ysig2));
@@ -3986,10 +4248,10 @@ GLMmediationMCMCconYbinM = function(Y, M, Z, C, V, V0,
   
   # -----------------------------------------------------------------------------
   # --------------------------------- Stan Data ---------------------------------
-  stan_data = list(Y = Y, M = M, V0 = V0, matX = matX, matM = matM)
+  stan_data = list(Y = Y, M = M, Uindex = Uindex, matX = matX, matM = matM)
   
-  stan_data$J = length(unique(V0))
-  stan_data$n_j = sapply(1:J, function(l) sum(V0==l))
+  stan_data$J = length(unique(Uindex))
+  stan_data$n_j = sapply(1:J, function(l) sum(Uindex==l))
   stan_data$N = sum(stan_data$n_j)
   stan_data$pm = ncol(stan_data$matX)
   stan_data$py = ncol(stan_data$matM)
@@ -4043,7 +4305,7 @@ GLMmediationMCMCconYbinM = function(Y, M, Z, C, V, V0,
                    n_MCMC = n_MCMC)
   
   # Observed Data
-  obsdata = list(Y = Y, M = M, C = C, Z = Z, V = V, V0 = V0)
+  obsdata = list(Y = Y, M = M, C = C, Z = Z, V = V, Uindex = Uindex)
   
   # MCMC Posteriors
   MCMCposteriors = list(Ysig2Lists = Ysig2Lists,
@@ -4067,15 +4329,15 @@ GLMmediationMCMCconYbinM = function(Y, M, Z, C, V, V0,
 }
 
 # Define MCMC function for continuous Y and ordinal M
-GLMmediationMCMCconYordM = function(Y, M, Z, C, V, V0,
+GLMmediationMCMCconYordM = function(Y, M, C, V, Uindex,
                                     gibbs_iter = gibbs_iter, 
                                     gibbs_burnin = gibbs_burnin, 
                                     gibbs_thin = gibbs_thin){
   
   # Define the number of clusters
-  uniqueV0 = sort(unique(V0))
-  J = length(uniqueV0)
-  V0 = apply(sapply(1:J, function(l) ifelse(V0==uniqueV0[l],l,0)),1,sum)
+  uniqueUindex = sort(unique(Uindex))
+  J = length(uniqueUindex)
+  Uindex = apply(sapply(1:J, function(l) ifelse(Uindex==uniqueUindex[l],l,0)),1,sum)
   
   # Define the number of observations
   N = length(Y)
@@ -4084,22 +4346,26 @@ GLMmediationMCMCconYordM = function(Y, M, Z, C, V, V0,
   K = length(unique(M))
   
   # Define the number of observations for each cluster
-  n_j = as.numeric(table(V0))
+  n_j = as.numeric(table(Uindex))
   
   # Data reordering
-  order_V0 = order(V0)
-  Y = Y[order_V0]
-  M = M[order_V0]
-  Z = Z[order_V0]
-  C = C[order_V0,]
-  V = V[order_V0,]
-  V0 = V0[order_V0]
+  order_Uindex = order(Uindex)
+  Y = Y[order_Uindex]
+  M = M[order_Uindex]
+  # Z = Z[order_Uindex]
+  C = C[order_Uindex,]
+  V = V[order_Uindex,]
+  Uindex = Uindex[order_Uindex]
   
   # Set initial values ----------------------------------------------------------
   if(min(M) != 1) { M = M + 1 }
   factorM = ordered(M, levels = paste0(1:K))
-  matX = cbind(Z, C, V) # no intercept for proportional odds model
-  matM = cbind(1, M, matX)
+  # with Z ----------------------------------------------------------------------
+  # matX = cbind(Z, C, V) # no intercept for proportional odds model
+  # matM = cbind(1, M, Z, C, V)
+  # without Z -------------------------------------------------------------------
+  matX = cbind(C, V) # no intercept for proportional odds model
+  matM = cbind(1, M, C, V)
   
   pm = ncol(matX)
   py = ncol(matM)
@@ -4118,7 +4384,7 @@ GLMmediationMCMCconYordM = function(Y, M, Z, C, V, V0,
     int<lower=1> py;  // Number of confounders for outcome glm
     int<lower=1> K;  // Number of ordinal categories of mediators
     
-    int<lower=1, upper=J> V0[N]; // Cluster assignment for each observation
+    int<lower=1, upper=J> Uindex[N]; // Cluster assignment for each observation
     row_vector[pm] matX[N];  // design matrix for mediator glm
     row_vector[py] matM[N];  // design matrix for outcome glm
     int<lower=1, upper=K> M[N];  // Mediator
@@ -4151,8 +4417,8 @@ GLMmediationMCMCconYordM = function(Y, M, Z, C, V, V0,
     vector[N] Mhat;
     vector[N] Yhat;
     for (i in 1:N) {
-      Mhat[i] = matX[i] * Mbeta + Mpsi[V0[i]] * sqrt(YMpsi[2,2]);
-      Yhat[i] = matM[i] * Ybeta + Ypsi[V0[i]] * sqrt(YMpsi[1,1]);
+      Mhat[i] = matX[i] * Mbeta + Mpsi[Uindex[i]] * sqrt(YMpsi[2,2]);
+      Yhat[i] = matM[i] * Ybeta + Ypsi[Uindex[i]] * sqrt(YMpsi[1,1]);
     }
     M ~ ordered_logistic(Mhat, Mnu);
     Y ~ normal(Yhat, sqrt(Ysig2));
@@ -4166,10 +4432,10 @@ GLMmediationMCMCconYordM = function(Y, M, Z, C, V, V0,
   
   # -----------------------------------------------------------------------------
   # --------------------------------- Stan Data ---------------------------------
-  stan_data = list(Y = Y, M = M, V0 = V0, matX = matX, matM = matM)
+  stan_data = list(Y = Y, M = M, Uindex = Uindex, matX = matX, matM = matM)
   
-  stan_data$J = length(unique(V0))
-  stan_data$n_j = sapply(1:J, function(l) sum(V0==l))
+  stan_data$J = length(unique(Uindex))
+  stan_data$n_j = sapply(1:J, function(l) sum(Uindex==l))
   stan_data$N = sum(stan_data$n_j)
   stan_data$K = length(unique(M))
   stan_data$pm = ncol(stan_data$matX)
@@ -4219,7 +4485,7 @@ GLMmediationMCMCconYordM = function(Y, M, Z, C, V, V0,
                    n_MCMC = n_MCMC)
   
   # Observed Data
-  obsdata = list(Y = Y, M = M, C = C, Z = Z, V = V, V0 = V0)
+  obsdata = list(Y = Y, M = M, C = C, Z = Z, V = V, Uindex = Uindex)
   
   # MCMC Posteriors
   MCMCposteriors = list(Ysig2Lists = Ysig2Lists,
@@ -4243,37 +4509,41 @@ GLMmediationMCMCconYordM = function(Y, M, Z, C, V, V0,
 }
 
 # Define MCMC function for continuous Y and count M
-GLMmediationMCMCconYcouM = function(Y, M, Z, C, V, V0,
+GLMmediationMCMCconYcouM = function(Y, M, C, V, Uindex,
                                     gibbs_iter = gibbs_iter, 
                                     gibbs_burnin = gibbs_burnin, 
                                     gibbs_thin = gibbs_thin){
   
   # Define the number of clusters
-  uniqueV0 = sort(unique(V0))
-  J = length(uniqueV0)
-  V0 = apply(sapply(1:J, function(l) ifelse(V0==uniqueV0[l],l,0)),1,sum)
+  uniqueUindex = sort(unique(Uindex))
+  J = length(uniqueUindex)
+  Uindex = apply(sapply(1:J, function(l) ifelse(Uindex==uniqueUindex[l],l,0)),1,sum)
   
   # Define the number of observations
   N = length(Y)
   
   # Define the number of observations for each cluster
-  n_j = as.numeric(table(V0))
+  n_j = as.numeric(table(Uindex))
   
   # Data reordering
-  order_V0 = order(V0)
-  Y = Y[order_V0]
-  M = M[order_V0]
-  Z = Z[order_V0]
-  C = C[order_V0,]
-  V = V[order_V0,]
-  V0 = V0[order_V0]
+  order_Uindex = order(Uindex)
+  Y = Y[order_Uindex]
+  M = M[order_Uindex]
+  # Z = Z[order_Uindex]
+  C = C[order_Uindex,]
+  V = V[order_Uindex,]
+  Uindex = Uindex[order_Uindex]
   
   colnames(C) = paste0("C",1:ncol(C))
   colnames(V) = paste0("V",1:ncol(V))
   
   # Set initial values ----------------------------------------------------------
-  matX = cbind(1, Z, C, V)
-  matM = cbind(1, M, Z, C, V)
+  # with Z ----------------------------------------------------------------------
+  # matX = cbind(1, Z, C, V)
+  # matM = cbind(1, M, Z, C, V)
+  # without Z -------------------------------------------------------------------
+  matX = cbind(1, C, V)
+  matM = cbind(1, M, C, V)
   
   pm = ncol(matX)
   py = ncol(matM)
@@ -4287,7 +4557,7 @@ GLMmediationMCMCconYcouM = function(Y, M, Z, C, V, V0,
     int<lower=1> pm;  // Number of confounders for mediator glm
     int<lower=1> py;  // Number of confounders for outcome glm
 
-    int<lower=1, upper=J> V0[N]; // Cluster assignment for each observation
+    int<lower=1, upper=J> Uindex[N]; // Cluster assignment for each observation
 
     row_vector[pm] matX[N];  // design matrix for mediator glm
     row_vector[py] matM[N];  // design matrix for outcome glm
@@ -4308,8 +4578,8 @@ GLMmediationMCMCconYcouM = function(Y, M, Z, C, V, V0,
     vector[N] Mhat;
     vector[N] Yhat;
     for (i in 1:N) {
-      Mhat[i] = matX[i] * Mbeta + YMpsi[2, V0[i]];
-      Yhat[i] = matM[i] * Ybeta + YMpsi[1, V0[i]];
+      Mhat[i] = matX[i] * Mbeta + YMpsi[2, Uindex[i]];
+      Yhat[i] = matM[i] * Ybeta + YMpsi[1, Uindex[i]];
     }
   }
   model {
@@ -4331,10 +4601,10 @@ GLMmediationMCMCconYcouM = function(Y, M, Z, C, V, V0,
   
   # -----------------------------------------------------------------------------
   # --------------------------------- Stan Data ---------------------------------
-  stan_data = list(Y = Y, M = M, V0 = V0, matX = matX, matM = matM)
+  stan_data = list(Y = Y, M = M, Uindex = Uindex, matX = matX, matM = matM)
   
-  stan_data$J = length(unique(V0))
-  stan_data$n_j = sapply(1:J, function(l) sum(V0==l))
+  stan_data$J = length(unique(Uindex))
+  stan_data$n_j = sapply(1:J, function(l) sum(Uindex==l))
   stan_data$N = N
   stan_data$pm = pm
   stan_data$py = py
@@ -4379,7 +4649,7 @@ GLMmediationMCMCconYcouM = function(Y, M, Z, C, V, V0,
                    n_MCMC = n_MCMC)
   
   # Observed Data
-  obsdata = list(Y = Y, M = M, C = C, Z = Z, V = V, V0 = V0)
+  obsdata = list(Y = Y, M = M, C = C, Z = Z, V = V, Uindex = Uindex)
   
   # MCMC Posteriors
   MCMCposteriors = list(MbetaLists = MbetaLists,
@@ -4400,34 +4670,38 @@ GLMmediationMCMCconYcouM = function(Y, M, Z, C, V, V0,
 }
 
 # Define MCMC function for binary Y and binary M
-GLMmediationMCMCbinYbinM = function(Y, M, Z, C, V, V0,
+GLMmediationMCMCbinYbinM = function(Y, M, C, V, Uindex,
                                     gibbs_iter = gibbs_iter, 
                                     gibbs_burnin = gibbs_burnin, 
                                     gibbs_thin = gibbs_thin){
   
   # Define the number of clusters
-  uniqueV0 = sort(unique(V0))
-  J = length(uniqueV0)
-  V0 = apply(sapply(1:J, function(l) ifelse(V0==uniqueV0[l],l,0)),1,sum)
+  uniqueUindex = sort(unique(Uindex))
+  J = length(uniqueUindex)
+  Uindex = apply(sapply(1:J, function(l) ifelse(Uindex==uniqueUindex[l],l,0)),1,sum)
   
   # Define the number of observations
   N = length(Y)
   
   # Define the number of observations for each cluster
-  n_j = as.numeric(table(V0))
+  n_j = as.numeric(table(Uindex))
   
   # Data reordering
-  order_V0 = order(V0)
-  Y = Y[order_V0]
-  M = M[order_V0]
-  Z = Z[order_V0]
-  C = C[order_V0,]
-  V = V[order_V0,]
-  V0 = V0[order_V0]
+  order_Uindex = order(Uindex)
+  Y = Y[order_Uindex]
+  M = M[order_Uindex]
+  # Z = Z[order_Uindex]
+  C = C[order_Uindex,]
+  V = V[order_Uindex,]
+  Uindex = Uindex[order_Uindex]
   
   # Set initial values ----------------------------------------------------------
-  matX = cbind(1, Z, C, V) # no intercept for proportional odds model
-  matM = cbind(1, M, Z, C, V)
+  # with Z ----------------------------------------------------------------------
+  # matX = cbind(1, Z, C, V)
+  # matM = cbind(1, M, Z, C, V)
+  # without Z -------------------------------------------------------------------
+  matX = cbind(1, C, V)
+  matM = cbind(1, M, C, V)
   
   pm = ncol(matX)
   py = ncol(matM)
@@ -4445,7 +4719,7 @@ GLMmediationMCMCbinYbinM = function(Y, M, Z, C, V, V0,
       int<lower=1> pm;  // Number of confounders for mediator glm
       int<lower=1> py;  // Number of confounders for outcome glm
       
-      int<lower=1, upper=J> V0[N]; // Cluster assignment for each observation
+      int<lower=1, upper=J> Uindex[N]; // Cluster assignment for each observation
       row_vector[pm] matX[N];  // design matrix for mediator glm
       row_vector[py] matM[N];  // design matrix for outcome glm
       int<lower=0, upper=1> M[N];  // Mediator
@@ -4471,15 +4745,15 @@ GLMmediationMCMCbinYbinM = function(Y, M, Z, C, V, V0,
       // priors
       Mpsi ~ std_normal();
       Ypsi ~ std_normal();
-      Mbeta ~ normal(0, 5);
-      Ybeta ~ normal(0, 5);
+      // Mbeta ~ normal(0, 5);
+      // Ybeta ~ normal(0, 5);
       
       // GLM likelihood
       vector[N] Mhat;
       vector[N] Yhat;
       for (i in 1:N) {
-        Mhat[i] = matX[i] * Mbeta + Mpsi[V0[i]] * sqrt(YMpsi[2,2]);
-        Yhat[i] = matM[i] * Ybeta + Ypsi[V0[i]] * sqrt(YMpsi[1,1]);
+        Mhat[i] = matX[i] * Mbeta + Mpsi[Uindex[i]] * sqrt(YMpsi[2,2]);
+        Yhat[i] = matM[i] * Ybeta + Ypsi[Uindex[i]] * sqrt(YMpsi[1,1]);
       }
       M ~ bernoulli_logit(Mhat);
       Y ~ bernoulli_logit(Yhat);
@@ -4488,10 +4762,10 @@ GLMmediationMCMCbinYbinM = function(Y, M, Z, C, V, V0,
   
   # -----------------------------------------------------------------------------
   # --------------------------------- Stan Data ---------------------------------
-  stan_data = list(Y = Y, M = M, V0 = V0, matX = matX, matM = matM)
+  stan_data = list(Y = Y, M = M, Uindex = Uindex, matX = matX, matM = matM)
   
-  stan_data$J = length(unique(V0))
-  stan_data$n_j = sapply(1:J, function(l) sum(V0==l))
+  stan_data$J = length(unique(Uindex))
+  stan_data$n_j = sapply(1:J, function(l) sum(Uindex==l))
   stan_data$N = sum(stan_data$n_j)
   stan_data$pm = ncol(stan_data$matX)
   stan_data$py = ncol(stan_data$matM)
@@ -4535,7 +4809,7 @@ GLMmediationMCMCbinYbinM = function(Y, M, Z, C, V, V0,
                    n_MCMC = n_MCMC)
   
   # Observed Data
-  obsdata = list(Y = Y, M = M, C = C, Z = Z, V = V, V0 = V0)
+  obsdata = list(Y = Y, M = M, C = C, Z = Z, V = V, Uindex = Uindex)
   
   # MCMC Posteriors
   MCMCposteriors = list(YbetaLists = YbetaLists,
@@ -4557,30 +4831,30 @@ GLMmediationMCMCbinYbinM = function(Y, M, Z, C, V, V0,
 }
 
 # Define MCMC function for any Y and any M
-GLMmediation = function(Y, M, Z, C, V, V0,
+GLMmediation = function(Y, M, Z, C, V, Uindex,
                         typeY = "continuous",typeM = "continuous", 
                         gibbs_iter = 2e3, gibbs_burnin = 2e3, gibbs_thin = 10,
                         modelM = "probit"){
   if (typeY == "continuous") {
     if (typeM == "continuous") {
-      object = GLMmediationMCMCconYconM(Y, M, Z, C, V, V0,
+      object = GLMmediationMCMCconYconM(Y, M, C, V, Uindex,
                                         gibbs_iter = gibbs_iter, 
                                         gibbs_burnin = gibbs_burnin, 
                                         gibbs_thin = gibbs_thin)
       
     } else if (typeM == "binary") {
-      object = GLMmediationMCMCconYbinM(Y, M, Z, C, V, V0,
+      object = GLMmediationMCMCconYbinM(Y, M, C, V, Uindex,
                                         gibbs_iter = gibbs_iter, 
                                         gibbs_burnin = gibbs_burnin, 
                                         gibbs_thin = gibbs_thin,
                                         modelM = modelM)
     } else if (typeM == "ordinal") {
-      object = GLMmediationMCMCconYordM(Y, M, Z, C, V, V0,
+      object = GLMmediationMCMCconYordM(Y, M, C, V, Uindex,
                                         gibbs_iter = gibbs_iter, 
                                         gibbs_burnin = gibbs_burnin, 
                                         gibbs_thin = gibbs_thin)
     } else if (typeM == "count") {
-      object = GLMmediationMCMCconYcouM(Y, M, Z, C, V, V0,
+      object = GLMmediationMCMCconYcouM(Y, M, C, V, Uindex,
                                         gibbs_iter = gibbs_iter, 
                                         gibbs_burnin = gibbs_burnin, 
                                         gibbs_thin = gibbs_thin)
@@ -4589,7 +4863,7 @@ GLMmediation = function(Y, M, Z, C, V, V0,
     if (typeM == "continuous") {
       # 
     } else if (typeM == "binary") {
-      object = GLMmediationMCMCbinYbinM(Y, M, Z, C, V, V0,
+      object = GLMmediationMCMCbinYbinM(Y, M, C, V, Uindex,
                                         gibbs_iter = gibbs_iter, 
                                         gibbs_burnin = gibbs_burnin, 
                                         gibbs_thin = gibbs_thin)

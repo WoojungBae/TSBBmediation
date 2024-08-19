@@ -269,10 +269,79 @@ set.seed(run_ID)
   colnames(C) = paste0("C",1:ncol(C))
   colnames(V) = paste0("V",1:ncol(V))
   
+  # Define the number of clusters
+  uniqueUindex = sort(unique(Uindex))
+  J = length(uniqueUindex)
+  Uindex = apply(sapply(1:J, function(l) ifelse(Uindex==uniqueUindex[l],l,0)),1,sum)
+  
+  # Define the number of observations
+  N = length(Y)
+  
+  # Define the number of observations for each cluster
+  n_j = as.numeric(table(Uindex))
+  
+  # Data reordering
+  order_Uindex = order(Uindex)
+  Y = Y[order_Uindex]
+  M = M[order_Uindex]
+  Z = Z[order_Uindex]
+  C = C[order_Uindex,]
+  V = V[order_Uindex,]
+  Uindex = Uindex[order_Uindex]
+  
+  colnames(C) = paste0("C",1:ncol(C))
+  colnames(V) = paste0("V",1:ncol(V))
+  
   matX = cbind(Z, C, V)
   matM = cbind(M, Z, C, V)
-  
   df = data.frame(Y = Y, M = M, Z = Z, C = C, V = V, Uindex = Uindex, matX = matX, matM = matM)
+  
+  # ------------------------------------------------------------------------------
+  # ------------------------------------------------------------------------------
+  # ------------------------------------------------------------------------------
+  Z0 = 0
+  which_Z0 = which(Z == Z0)
+  Y0 = Y[which_Z0]
+  M0 = M[which_Z0]
+  C0 = C[which_Z0,]
+  V0 = V[which_Z0,]
+  Uindex0 = Uindex[which_Z0]
+  matX0 = cbind(C0, V0)
+  matM0 = cbind(M0, C0, V0)
+  N0 = length(Y0)
+  uniqueUindex0 = sort(unique(Uindex0))
+  J0 = length(uniqueUindex0)
+  Uindex0 = apply(sapply(1:J0, function(l) ifelse(Uindex0==uniqueUindex0[l],l,0)),1,sum)
+  n_j0 = as.numeric(table(Uindex0))
+  order_Uindex0 = order(Uindex0)
+  Y0 = Y0[order_Uindex0]
+  M0 = M0[order_Uindex0]
+  C0 = C0[order_Uindex0,]
+  V0 = V0[order_Uindex0,]
+  Uindex0 = Uindex0[order_Uindex0]
+  df0 = data.frame(Y = Y0, M = M0, Z = Z0, C = C0, V = V0, Uindex = Uindex0, matX = matX0, matM = matM0)
+  
+  Z1 = 1
+  which_Z1 = which(Z == Z1)
+  Y1 = Y[which_Z1]
+  M1 = M[which_Z1]
+  C1 = C[which_Z1,]
+  V1 = V[which_Z1,]
+  Uindex1 = Uindex[which_Z1]
+  matX1 = cbind(C1, V1)
+  matM1 = cbind(M1, C1, V1)
+  N1 = length(Y1)
+  uniqueUindex1 = sort(unique(Uindex1))
+  J1 = length(uniqueUindex1)
+  Uindex1 = apply(sapply(1:J1, function(l) ifelse(Uindex1==uniqueUindex1[l],l,0)),1,sum)
+  n_j1 = as.numeric(table(Uindex1))
+  order_Uindex1 = order(Uindex1)
+  Y1 = Y1[order_Uindex1]
+  M1 = M1[order_Uindex1]
+  C1 = C1[order_Uindex1,]
+  V1 = V1[order_Uindex1,]
+  Uindex1 = Uindex1[order_Uindex1]
+  df1 = data.frame(Y = Y1, M = M1, Z = Z1, C = C1, V = V1, Uindex = Uindex1, matX = matX1, matM = matM1)
 }
 
 gibbs_thin = 1e2
@@ -297,11 +366,22 @@ c(E_true[1]-E_true[2],E_true[2]-E_true[3],E_true[1]-E_true[3])
 
 # -----------------------------------------------------------------------------
 # -----------------------------------------------------------------------------
+# -----------------------------------------------------------------------------
+# -----------------------------------------------------------------------------
 # rBARTmediation
-BARTfit = rBARTmediation(Y, M, Z, C, V, Uindex,
-                         typeY = Ydist, typeM = Mdist, 
-                         ndpost=gibbs_iter, nskip=gibbs_burnin, keepevery=gibbs_thin, 
-                         ntree=ntree, sparse = sparse)
+BARTfit0 = rBARTmediation(Y0, M0, C0, V0, Uindex0,
+                          typeY = Ydist, typeM = Mdist, 
+                          ndpost=gibbs_iter, nskip=gibbs_burnin, keepevery=gibbs_thin, 
+                          ntree=ntree, sparse = sparse)
+
+# rBARTmediation
+BARTfit1 = rBARTmediation(Y1, M1, C1, V1, Uindex1,
+                          typeY = Ydist, typeM = Mdist, 
+                          ndpost=gibbs_iter, nskip=gibbs_burnin, keepevery=gibbs_thin, 
+                          ntree=ntree, sparse = sparse)
+
+BARTfit = list(object0 = BARTfit0, object1 = BARTfit1)
+Uindex = list(Uindex = Uindex, Uindex0 = Uindex0, Uindex1 = Uindex1)
 
 # BB-BB
 rBARTmediationresultBBmediationPOST = BBmediationPOST(BARTfit, C, V, Uindex, esttype, saveall, T)
@@ -309,49 +389,14 @@ rBARTmediationresultBBmediationPOST = BBmediationPOST(BARTfit, C, V, Uindex, est
 (rBARTmediationBBtableNDE = rBARTmediationresultBBmediationPOST$NDE_result_mc)
 (rBARTmediationBBtableATE = rBARTmediationresultBBmediationPOST$ATE_result_mc)
 
-# mean(M1.test)
-mean(M[Z==1])
-mean(BARTfit$Mdraw.mean[Z==1])
-  mean(BARTfit$mu.uM)
-
-# mean(M0.test)
-mean(M[Z==0])
-mean(BARTfit$Mdraw.mean[Z==0])
-  mean(BARTfit$mu.uM)
-
-# mean(Yz1m1.test)
-mean(Y[Z==1])
-mean(BARTfit$Ydraw.mean[Z==1])
-  mean(BARTfit$mu.uY)
-
-# mean(Yz0m0.test)
-mean(Y[Z==0])
-mean(BARTfit$Ydraw.mean[Z==0])
-  mean(BARTfit$mu.uY)
-
-# mean(apply(BARTfit$uMdraw, 1, mean))
-# mean(apply(BARTfit$uYdraw, 1, mean))
-# apply(BARTfit$uMdraw, 1, sd)
-# apply(BARTfit$uYdraw, 1, sd)
-# mean(BARTfit$mu.uM)
-# mean(BARTfit$mu.uY)
-# unique(BARTfit$mu.uY)
-# unique(BARTfit$sig.uM)
-# unique(BARTfit$sig.uY)
-# unique(BARTfit$rho.uMY)
-# BARTfit$iMsigest
-# BARTfit$iYsigest
-
-# mean(BARTfit$Moffset)
-# mean(BARTfit$Yoffset)
-
 # BB-HBB
 rBARTmediationresultHBBmediationPOST = HBBmediationPOST(BARTfit, C, V, Uindex, esttype, saveall, T)
 (rBARTmediationHBBtableNIE = rBARTmediationresultHBBmediationPOST$NIE_result_mc)
 (rBARTmediationHBBtableNDE = rBARTmediationresultHBBmediationPOST$NDE_result_mc)
 (rBARTmediationHBBtableATE = rBARTmediationresultHBBmediationPOST$ATE_result_mc)
 
-# TSBB
+source("TSBBmediation_source_r.R")
+# # TSBB
 # rBARTmediationresultTSBBmediationPOST = TSBBmediationPOST(BARTfit, C, V, Uindex, esttype, saveall, chi = 1, zeta = 0.5, T)
 # (rBARTmediationTSBBtableNIE = rBARTmediationresultTSBBmediationPOST$NIE_result_mc)
 # (rBARTmediationTSBBtableNDE = rBARTmediationresultTSBBmediationPOST$NDE_result_mc)
