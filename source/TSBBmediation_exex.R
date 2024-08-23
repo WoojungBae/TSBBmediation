@@ -210,10 +210,6 @@ set.seed(run_ID)
   }
   
   # ------------------------------------------------------------------------------
-  # ------------------------------------------------------------------------------
-  # ------------------------------------------------------------------------------
-  
-  # ------------------------------------------------------------------------------
   # Data Generation --------------------------------------------------------------
   # ------------------------------------------------------------------------------
   
@@ -294,7 +290,7 @@ set.seed(run_ID)
   
   matX = cbind(Z, C, V)
   matM = cbind(M, Z, C, V)
-  df = data.frame(Y = Y, M = M, Z = Z, C = C, V = V, Uindex = Uindex, matX = matX, matM = matM)
+  # df = data.frame(Y = Y, M = M, Z = Z, C = C, V = V, Uindex = Uindex, matX = matX, matM = matM)
   
   # ------------------------------------------------------------------------------
   # ------------------------------------------------------------------------------
@@ -319,7 +315,7 @@ set.seed(run_ID)
   C0 = C0[order_Uindex0,]
   V0 = V0[order_Uindex0,]
   Uindex0 = Uindex0[order_Uindex0]
-  df0 = data.frame(Y = Y0, M = M0, Z = Z0, C = C0, V = V0, Uindex = Uindex0, matX = matX0, matM = matM0)
+  # df0 = data.frame(Y = Y0, M = M0, Z = Z0, C = C0, V = V0, Uindex = Uindex0, matX = matX0, matM = matM0)
   
   Z1 = 1
   which_Z1 = which(Z == Z1)
@@ -341,12 +337,16 @@ set.seed(run_ID)
   C1 = C1[order_Uindex1,]
   V1 = V1[order_Uindex1,]
   Uindex1 = Uindex1[order_Uindex1]
-  df1 = data.frame(Y = Y1, M = M1, Z = Z1, C = C1, V = V1, Uindex = Uindex1, matX = matX1, matM = matM1)
+  # df1 = data.frame(Y = Y1, M = M1, Z = Z1, C = C1, V = V1, Uindex = Uindex1, matX = matX1, matM = matM1)
 }
 
-gibbs_thin = 1e2
-gibbs_iter = 2e2
+gibbs_thin = 1e1
+gibbs_iter = 2e3
 gibbs_burnin = 2e4
+
+# gibbs_thin = 1e1
+# gibbs_iter = 2e2
+# gibbs_burnin = 2e3
 
 # sparse = TRUE
 sparse = FALSE
@@ -381,7 +381,6 @@ BARTfit1 = rBARTmediation(Y1, M1, C1, V1, Uindex1,
                           ntree=ntree, sparse = sparse)
 
 BARTfit = list(object0 = BARTfit0, object1 = BARTfit1)
-Uindex = list(Uindex = Uindex, Uindex0 = Uindex0, Uindex1 = Uindex1)
 
 # BB-BB
 rBARTmediationresultBBmediationPOST = BBmediationPOST(BARTfit, C, V, Uindex, esttype, saveall, T)
@@ -395,7 +394,6 @@ rBARTmediationresultHBBmediationPOST = HBBmediationPOST(BARTfit, C, V, Uindex, e
 (rBARTmediationHBBtableNDE = rBARTmediationresultHBBmediationPOST$NDE_result_mc)
 (rBARTmediationHBBtableATE = rBARTmediationresultHBBmediationPOST$ATE_result_mc)
 
-source("TSBBmediation_source_r.R")
 # # TSBB
 # rBARTmediationresultTSBBmediationPOST = TSBBmediationPOST(BARTfit, C, V, Uindex, esttype, saveall, chi = 1, zeta = 0.5, T)
 # (rBARTmediationTSBBtableNIE = rBARTmediationresultTSBBmediationPOST$NIE_result_mc)
@@ -478,6 +476,7 @@ c(E_true[1]-E_true[2],E_true[2]-E_true[3],E_true[1]-E_true[3])
 # c(E_true[1]-E_true[2],E_true[2]-E_true[3],E_true[1]-E_true[3])
 
 source("TSBBmediation_source_r.R")
+sourceCpp("TSBBmediation_source_cpp.cpp")
 # -----------------------------------------------------------------------------
 # -----------------------------------------------------------------------------
 # GLM
@@ -498,12 +497,12 @@ GLMresultHBBmediationPOST = HBBmediationPOST(GLMfit, C, V, Uindex, esttype, save
 (GLMHBBtableNDE = GLMresultHBBmediationPOST$NDE_result_mc)
 (GLMHBBtableATE = GLMresultHBBmediationPOST$ATE_result_mc)
 
-# # TSBB
-# GLMresultTSBBmediationPOST = TSBBmediationPOST(GLMfit, C, V, Uindex, esttype, saveall, chi = 1, zeta = 0.5, F)
-# (GLMTSBBtableNIE = GLMresultTSBBmediationPOST$NIE_result_mc)
-# (GLMTSBBtableNDE = GLMresultTSBBmediationPOST$NDE_result_mc)
-# (GLMTSBBtableATE = GLMresultTSBBmediationPOST$ATE_result_mc)
-# c(E_true[1]-E_true[2],E_true[2]-E_true[3],E_true[1]-E_true[3])
+# TSBB
+GLMresultTSBBmediationPOST = TSBBmediationPOST(GLMfit, C, V, Uindex, esttype, saveall, chi = 1, zeta = 0.5, T)
+(GLMTSBBtableNIE = GLMresultTSBBmediationPOST$NIE_result_mc)
+(GLMTSBBtableNDE = GLMresultTSBBmediationPOST$NDE_result_mc)
+(GLMTSBBtableATE = GLMresultTSBBmediationPOST$ATE_result_mc)
+c(E_true[1]-E_true[2],E_true[2]-E_true[3],E_true[1]-E_true[3])
 
 GLMresultTSBBmediationPOSTsim = TSBBmediationPOSTsim(GLMfit, C, V, Uindex, esttype, saveall,
                                                      list_chi = c(1e-2, 1e-1, 1, 1e1, 1e2),
