@@ -33,7 +33,7 @@ sourceCpp("TSBBmediation_source_cpp.cpp")
 # -----------------------------------------------------------------------------
 # Scenario
 Scenario = 7
-run_ID = 50
+run_ID = 1
 set.seed(run_ID)
 
 {
@@ -344,9 +344,9 @@ gibbs_thin = 1e1
 gibbs_iter = 2e3
 gibbs_burnin = 2e4
 
-gibbs_thin = 1e1
-gibbs_iter = 2e2
-gibbs_burnin = 2e3
+# gibbs_thin = 1e1
+# gibbs_iter = 2e2
+# gibbs_burnin = 2e3
 
 # sparse = TRUE
 sparse = FALSE
@@ -381,7 +381,6 @@ BARTfit1 = rBARTmediation(Y1, M1, C1, V1, Uindex1,
                           ntree=ntree, sparse = sparse)
 
 BARTfit = list(object0 = BARTfit0, object1 = BARTfit1)
-class(BARTfit) = "rBARTmediation"
 
 # BB-BB
 rBARTmediationresultBBmediationPOST = BBmediationPOST(BARTfit, C, V, Uindex, esttype, saveall, T)
@@ -566,6 +565,3 @@ round(rbind(c(GLMresultBBmediationPOST$NIE_result_mc,
             cbind(GLMresultTSBBmediationPOSTsim$NIE_result_mc,
                   GLMresultTSBBmediationPOSTsim$NDE_result_mc,
                   GLMresultTSBBmediationPOSTsim$ATE_result_mc)),3)
-
-c(E_true[1],E_true[2],E_true[3])
-c(E_true[1]-E_true[2],E_true[2]-E_true[3],E_true[1]-E_true[3])

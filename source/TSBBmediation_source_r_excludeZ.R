@@ -461,16 +461,16 @@ BBmediationPOST = function(object,  # object from rBARTmediation
   # V.test = V
   # Uindex = Uindex
   
+  object0 = object$object0
+  object1 = object$object1
+  
   # matrix X to predict at
   X.test = cbind(C.test, V.test)
   
   # Significance Level alpha
   level = 0.05
   
-  if (inherits(object,"rBARTmediation")) {
-    object0 = object$object0
-    object1 = object$object1
-    
+  if (inherits(object$object0,"rBARTmediation")) {
     # Define POST function for continuous Y and continuous M using BB
     # predict(rBARTmediation)
     # BARTfitPRED = predict(object, X.test, Uindex)
@@ -524,14 +524,7 @@ BBmediationPOST = function(object,  # object from rBARTmediation
         cat("Post-Processing",post_reps,"(",(post_reps/n_MCMC)*100,"%)","Time:",date(),"\n")
       }
     }
-  } else if (inherits(object,"rGLMmediation")) {
-    object0 = object$object0
-    object1 = object$object1
-    
-    # 
-    z0 = 0
-    z1 = 1
-    
+  } else if (inherits(object0,"rGLMmediation")) {
     # Define POST function for continuous Y and continuous M using BB
     # Constants
     N = nrow(X.test)
@@ -578,24 +571,24 @@ BBmediationPOST = function(object,  # object from rBARTmediation
           
           # random-effects
           YMpsi_J0 = rmvn_cpp(J, rep(0,2), YMpsiPars0) # *sqrt(diag(YMpsiPars0)) # rbind(YpsiPars0,MpsiPars0)
-          Ypsi_N0 = YMpsi_J0[1,Uindex]
-          Mpsi_N0 = YMpsi_J0[2,Uindex]
+          Ypsi_N0 = YMpsi_J0[1,]
+          Mpsi_N0 = YMpsi_J0[2,]
           
           YMpsi_J1 = rmvn_cpp(J, rep(0,2), YMpsiPars1) # *sqrt(diag(YMpsiPars1)) # rbind(YpsiPars1,MpsiPars1)
-          Ypsi_N1 = YMpsi_J1[1,Uindex]
-          Mpsi_N1 = YMpsi_J1[2,Uindex]
+          Ypsi_N1 = YMpsi_J1[1,]
+          Mpsi_N1 = YMpsi_J1[2,]
           
           # Normal model for continuous M
           # draw M0_mc and M1_mc
-          Mhat_z0_mc = matX.test %*% MbetaPars0 + Mpsi_N0
-          Mhat_z1_mc = matX.test %*% MbetaPars1 + Mpsi_N1
-          # for (j in 1:J) {
-          #   whichUindex = which(Uindex==j)
-          #   if(length(whichUindex)>0){
-          #     Mhat_z0_mc[whichUindex] = Mhat_z0_mc[whichUindex] + Mpsi_N0[j]
-          #     Mhat_z1_mc[whichUindex] = Mhat_z1_mc[whichUindex] + Mpsi_N1[j]
-          #   }
-          # }
+          Mhat_z0_mc = matX.test %*% MbetaPars0
+          Mhat_z1_mc = matX.test %*% MbetaPars1
+          for (j in 1:J) {
+            whichUindex = which(Uindex==j)
+            if(length(whichUindex)>0){
+              Mhat_z0_mc[whichUindex] = Mhat_z0_mc[whichUindex] + Mpsi_N0[j]
+              Mhat_z1_mc[whichUindex] = Mhat_z1_mc[whichUindex] + Mpsi_N1[j]
+            }
+          }
           M0_mc = rnorm(N, Mhat_z0_mc, MsigPars0)
           M1_mc = rnorm(N, Mhat_z1_mc, MsigPars1)
           
@@ -606,14 +599,14 @@ BBmediationPOST = function(object,  # object from rBARTmediation
           Yhat_z0m0_mc = c(matM_m0_mc %*% YbetaPars0)
           Yhat_z1m0_mc = c(matM_m0_mc %*% YbetaPars1)
           Yhat_z1m1_mc = c(matM_m1_mc %*% YbetaPars1)
-          # for (j in 1:J) {
-          #   whichUindex = which(Uindex==j)
-          #   if(length(whichUindex)>0){
-          #     Yhat_z0m0_mc[whichUindex] = Yhat_z0m0_mc[whichUindex] + Ypsi_N0[j]
-          #     Yhat_z1m0_mc[whichUindex] = Yhat_z1m0_mc[whichUindex] + Ypsi_N1[j]
-          #     Yhat_z1m1_mc[whichUindex] = Yhat_z1m1_mc[whichUindex] + Ypsi_N1[j]
-          #   }
-          # }
+          for (j in 1:J) {
+            whichUindex = which(Uindex==j)
+            if(length(whichUindex)>0){
+              Yhat_z0m0_mc[whichUindex] = Yhat_z0m0_mc[whichUindex] + Ypsi_N0[j]
+              Yhat_z1m0_mc[whichUindex] = Yhat_z1m0_mc[whichUindex] + Ypsi_N1[j]
+              Yhat_z1m1_mc[whichUindex] = Yhat_z1m1_mc[whichUindex] + Ypsi_N1[j]
+            }
+          }
           Yhat_z0m0_mc = rnorm(N, Yhat_z0m0_mc, YsigPars0)
           Yhat_z1m0_mc = rnorm(N, Yhat_z1m0_mc, YsigPars1)
           Yhat_z1m1_mc = rnorm(N, Yhat_z1m1_mc, YsigPars1)
@@ -639,9 +632,9 @@ BBmediationPOST = function(object,  # object from rBARTmediation
           }
         }
       } else if (object0$typeM == "binary") {
-        if (object0$modelM == "probit") {
+        if (object$modelM == "probit") {
           callM = pnorm
-        } else if (object0$modelM == "logit") {
+        } else if (object$modelM == "logit") {
           callM = plogis
         }
         
@@ -669,24 +662,24 @@ BBmediationPOST = function(object,  # object from rBARTmediation
           
           # random-effects
           YMpsi_J0 = rmvn_cpp(J, rep(0,2), YMpsiPars0) # *sqrt(diag(YMpsiPars0)) # rbind(YpsiPars0,MpsiPars0)
-          Ypsi_N0 = YMpsi_J0[1,Uindex]
-          Mpsi_N0 = YMpsi_J0[2,Uindex]
+          Ypsi_N0 = YMpsi_J0[1,]
+          Mpsi_N0 = YMpsi_J0[2,]
           
           YMpsi_J1 = rmvn_cpp(J, rep(0,2), YMpsiPars1) # *sqrt(diag(YMpsiPars1)) # rbind(YpsiPars1,MpsiPars1)
-          Ypsi_N1 = YMpsi_J1[1,Uindex]
-          Mpsi_N1 = YMpsi_J1[2,Uindex]
+          Ypsi_N1 = YMpsi_J1[1,]
+          Mpsi_N1 = YMpsi_J1[2,]
           
           # Normal model for continuous M
           # draw M0_mc and M1_mc
-          Mhat_z0_mc = matX.test %*% MbetaPars0 + Mpsi_N0
-          Mhat_z1_mc = matX.test %*% MbetaPars1 + Mpsi_N1
-          # for (j in 1:J) {
-          #   whichUindex = which(Uindex==j)
-          #   if(length(whichUindex)>0){
-          #     Mhat_z0_mc[whichUindex] = Mhat_z0_mc[whichUindex] + Mpsi_N0[j]
-          #     Mhat_z1_mc[whichUindex] = Mhat_z1_mc[whichUindex] + Mpsi_N1[j]
-          #   }
-          # }
+          Mhat_z0_mc = matX.test %*% MbetaPars0
+          Mhat_z1_mc = matX.test %*% MbetaPars1
+          for (j in 1:J) {
+            whichUindex = which(Uindex==j)
+            if(length(whichUindex)>0){
+              Mhat_z0_mc[whichUindex] = Mhat_z0_mc[whichUindex] + Mpsi_N0[j]
+              Mhat_z1_mc[whichUindex] = Mhat_z1_mc[whichUindex] + Mpsi_N1[j]
+            }
+          }
           M0_mc = rbinom(N,1, callM(Mhat_z0_mc))
           M1_mc = rbinom(N,1, callM(Mhat_z1_mc))
           
@@ -694,17 +687,17 @@ BBmediationPOST = function(object,  # object from rBARTmediation
           # draw Y_z0m0_mc, Y_z1m0_mc, Y_z1m1_mc
           matM_m0_mc = cbind(1, M0_mc, X.test)
           matM_m1_mc = cbind(1, M1_mc, X.test)
-          Yhat_z0m0_mc = c(matM_m0_mc %*% YbetaPars0) + Ypsi_N0
-          Yhat_z1m0_mc = c(matM_m0_mc %*% YbetaPars1) + Ypsi_N1
-          Yhat_z1m1_mc = c(matM_m1_mc %*% YbetaPars1) + Ypsi_N1
-          # for (j in 1:J) {
-          #   whichUindex = which(Uindex==j)
-          #   if(length(whichUindex)>0){
-          #     Yhat_z0m0_mc[whichUindex] = Yhat_z0m0_mc[whichUindex] + Ypsi_N0[j]
-          #     Yhat_z1m0_mc[whichUindex] = Yhat_z1m0_mc[whichUindex] + Ypsi_N1[j]
-          #     Yhat_z1m1_mc[whichUindex] = Yhat_z1m1_mc[whichUindex] + Ypsi_N1[j]
-          #   }
-          # }
+          Yhat_z0m0_mc = c(matM_m0_mc %*% YbetaPars0)
+          Yhat_z1m0_mc = c(matM_m0_mc %*% YbetaPars1)
+          Yhat_z1m1_mc = c(matM_m1_mc %*% YbetaPars1)
+          for (j in 1:J) {
+            whichUindex = which(Uindex==j)
+            if(length(whichUindex)>0){
+              Yhat_z0m0_mc[whichUindex] = Yhat_z0m0_mc[whichUindex] + Ypsi_N0[j]
+              Yhat_z1m0_mc[whichUindex] = Yhat_z1m0_mc[whichUindex] + Ypsi_N1[j]
+              Yhat_z1m1_mc[whichUindex] = Yhat_z1m1_mc[whichUindex] + Ypsi_N1[j]
+            }
+          }
           Yhat_z0m0_mc = rnorm(N, Yhat_z0m0_mc, YsigPars0)
           Yhat_z1m0_mc = rnorm(N, Yhat_z1m0_mc, YsigPars1)
           Yhat_z1m1_mc = rnorm(N, Yhat_z1m1_mc, YsigPars1)
@@ -754,41 +747,42 @@ BBmediationPOST = function(object,  # object from rBARTmediation
           
           # random-effects
           YMpsi_J0 = rmvn_cpp(J, rep(0,2), YMpsiPars0) # *sqrt(diag(YMpsiPars0)) # rbind(YpsiPars0,MpsiPars0)
-          Ypsi_N0 = YMpsi_J0[1,Uindex]
-          Mpsi_N0 = YMpsi_J0[2,Uindex]
+          Ypsi_N0 = YMpsi_J0[1,]
+          Mpsi_N0 = YMpsi_J0[2,]
           
           YMpsi_J1 = rmvn_cpp(J, rep(0,2), YMpsiPars1) # *sqrt(diag(YMpsiPars1)) # rbind(YpsiPars1,MpsiPars1)
-          Ypsi_N1 = YMpsi_J1[1,Uindex]
-          Mpsi_N1 = YMpsi_J1[2,Uindex]
+          Ypsi_N1 = YMpsi_J1[1,]
+          Mpsi_N1 = YMpsi_J1[2,]
           
           # Normal model for continuous M
           # draw M0_mc and M1_mc
-          Mhat_z0_mc = matX.test %*% MbetaPars0 + Mpsi_N0
-          Mhat_z1_mc = matX.test %*% MbetaPars1 + Mpsi_N1
-          # for (j in 1:J) {
-          #   whichUindex = which(Uindex==j)
-          #   if(length(whichUindex)>0){
-          #     Mhat_z0_mc[whichUindex] = Mhat_z0_mc[whichUindex] + Mpsi_N0[j]
-          #     Mhat_z1_mc[whichUindex] = Mhat_z1_mc[whichUindex] + Mpsi_N1[j]
-          #   }
-          M0_mc = rbinom(N,1, pnorm(Mhat_z0_mc))
-          M1_mc = rbinom(N,1, pnorm(Mhat_z1_mc))
+          Mhat_z0_mc = matX.test %*% MbetaPars0
+          Mhat_z1_mc = matX.test %*% MbetaPars1
+          for (j in 1:J) {
+            whichUindex = which(Uindex==j)
+            if(length(whichUindex)>0){
+              Mhat_z0_mc[whichUindex] = Mhat_z0_mc[whichUindex] + Mpsi_N0[j]
+              Mhat_z1_mc[whichUindex] = Mhat_z1_mc[whichUindex] + Mpsi_N1[j]
+            }
+          }
+          M0_mc = rbinom(N,1, callM(Mhat_z0_mc))
+          M1_mc = rbinom(N,1, callM(Mhat_z1_mc))
           
           # Normal model for continuous Y
           # draw Y_z0m0_mc, Y_z1m0_mc, Y_z1m1_mc
           matM_m0_mc = cbind(1, M0_mc, X.test)
           matM_m1_mc = cbind(1, M1_mc, X.test)
-          Yhat_z0m0_mc = c(matM_m0_mc %*% YbetaPars0) + Ypsi_N0
-          Yhat_z1m0_mc = c(matM_m0_mc %*% YbetaPars1) + Ypsi_N1
-          Yhat_z1m1_mc = c(matM_m1_mc %*% YbetaPars1) + Ypsi_N1
-          # for (j in 1:J) {
-          #   whichUindex = which(Uindex==j)
-          #   if(length(whichUindex)>0){
-          #     Yhat_z0m0_mc[whichUindex] = Yhat_z0m0_mc[whichUindex] + Ypsi_N0[j]
-          #     Yhat_z1m0_mc[whichUindex] = Yhat_z1m0_mc[whichUindex] + Ypsi_N1[j]
-          #     Yhat_z1m1_mc[whichUindex] = Yhat_z1m1_mc[whichUindex] + Ypsi_N1[j]
-          #   }
-          # }
+          Yhat_z0m0_mc = c(matM_m0_mc %*% YbetaPars0)
+          Yhat_z1m0_mc = c(matM_m0_mc %*% YbetaPars1)
+          Yhat_z1m1_mc = c(matM_m1_mc %*% YbetaPars1)
+          for (j in 1:J) {
+            whichUindex = which(Uindex==j)
+            if(length(whichUindex)>0){
+              Yhat_z0m0_mc[whichUindex] = Yhat_z0m0_mc[whichUindex] + Ypsi_N0[j]
+              Yhat_z1m0_mc[whichUindex] = Yhat_z1m0_mc[whichUindex] + Ypsi_N1[j]
+              Yhat_z1m1_mc[whichUindex] = Yhat_z1m1_mc[whichUindex] + Ypsi_N1[j]
+            }
+          }
           Yhat_z0m0_mc = rbinom(N, 1, plogis(Yhat_z0m0_mc))
           Yhat_z1m0_mc = rbinom(N, 1, plogis(Yhat_z1m0_mc))
           Yhat_z1m1_mc = rbinom(N, 1, plogis(Yhat_z1m1_mc))
@@ -905,16 +899,16 @@ HBBmediationPOST = function(object, # object from predict(rBARTmediation)
   # V.test = V
   # Uindex = Uindex
   
+  object0 = object$object0
+  object1 = object$object1
+  
   # matrix X to predict at
   X.test = cbind(C.test, V.test)
   
   # Significance Level alpha
   level = 0.05
   
-  if (inherits(object,"rBARTmediation")) {
-    object0 = object$object0
-    object1 = object$object1
-    
+  if (inherits(object$object0,"rBARTmediation")) {
     # predict(rBARTmediation)
     # BARTfitPRED = predict(object, X.test, Uindex)
     BARTfitPRED = predict(object0, object1, X.test, Uindex)
@@ -966,14 +960,7 @@ HBBmediationPOST = function(object, # object from predict(rBARTmediation)
         cat("Post-Processing",post_reps,"(",(post_reps/n_MCMC)*100,"%)","Time:",date(),"\n")
       }
     }
-  } else if (inherits(object,"rGLMmediation")) {
-    object0 = object$object0
-    object1 = object$object1
-    
-    # 
-    z0 = 0
-    z1 = 1
-    
+  } else if (inherits(object0,"rGLMmediation")) {
     # Define POST function for continuous Y and continuous M using HBB
     N = nrow(X.test)
     J = length(unique(Uindex))
@@ -1025,24 +1012,24 @@ HBBmediationPOST = function(object, # object from predict(rBARTmediation)
           
           # random-effects
           YMpsi_J0 = rmvn_cpp(J, rep(0,2), YMpsiPars0) # *sqrt(diag(YMpsiPars0)) # rbind(YpsiPars0,MpsiPars0)
-          Ypsi_N0 = YMpsi_J0[1,Uindex]
-          Mpsi_N0 = YMpsi_J0[2,Uindex]
+          Ypsi_N0 = YMpsi_J0[1,]
+          Mpsi_N0 = YMpsi_J0[2,]
           
           YMpsi_J1 = rmvn_cpp(J, rep(0,2), YMpsiPars1) # *sqrt(diag(YMpsiPars1)) # rbind(YpsiPars1,MpsiPars1)
-          Ypsi_N1 = YMpsi_J1[1,Uindex]
-          Mpsi_N1 = YMpsi_J1[2,Uindex]
+          Ypsi_N1 = YMpsi_J1[1,]
+          Mpsi_N1 = YMpsi_J1[2,]
           
           # Normal model for continuous M
           # draw M0_mc and M1_mc
-          Mhat_z0_mc = matX.test %*% MbetaPars0 + Mpsi_N0
-          Mhat_z1_mc = matX.test %*% MbetaPars1 + Mpsi_N1
-          # for (j in 1:J) {
-          #   whichUindex = which(Uindex==j)
-          #   if(length(whichUindex)>0){
-          #     Mhat_z0_mc[whichUindex] = Mhat_z0_mc[whichUindex] + Mpsi_N0[j]
-          #     Mhat_z1_mc[whichUindex] = Mhat_z1_mc[whichUindex] + Mpsi_N1[j]
-          #   }
-          # }
+          Mhat_z0_mc = matX.test %*% MbetaPars0
+          Mhat_z1_mc = matX.test %*% MbetaPars1
+          for (j in 1:J) {
+            whichUindex = which(Uindex==j)
+            if(length(whichUindex)>0){
+              Mhat_z0_mc[whichUindex] = Mhat_z0_mc[whichUindex] + Mpsi_N0[j]
+              Mhat_z1_mc[whichUindex] = Mhat_z1_mc[whichUindex] + Mpsi_N1[j]
+            }
+          }
           M0_mc = rnorm(N, Mhat_z0_mc, MsigPars0)
           M1_mc = rnorm(N, Mhat_z1_mc, MsigPars1)
           
@@ -1050,17 +1037,17 @@ HBBmediationPOST = function(object, # object from predict(rBARTmediation)
           # draw Y_z0m0_mc, Y_z1m0_mc, Y_z1m1_mc
           matM_m0_mc = cbind(1, M0_mc, X.test)
           matM_m1_mc = cbind(1, M1_mc, X.test)
-          Yhat_z0m0_mc = c(matM_m0_mc %*% YbetaPars0) + Ypsi_N0
-          Yhat_z1m0_mc = c(matM_m0_mc %*% YbetaPars1) + Ypsi_N1
-          Yhat_z1m1_mc = c(matM_m1_mc %*% YbetaPars1) + Ypsi_N1
-          # for (j in 1:J) {
-          #   whichUindex = which(Uindex==j)
-          #   if(length(whichUindex)>0){
-          #     Yhat_z0m0_mc[whichUindex] = Yhat_z0m0_mc[whichUindex] + Ypsi_N0[j]
-          #     Yhat_z1m0_mc[whichUindex] = Yhat_z1m0_mc[whichUindex] + Ypsi_N1[j]
-          #     Yhat_z1m1_mc[whichUindex] = Yhat_z1m1_mc[whichUindex] + Ypsi_N1[j]
-          #   }
-          # }
+          Yhat_z0m0_mc = c(matM_m0_mc %*% YbetaPars0)
+          Yhat_z1m0_mc = c(matM_m0_mc %*% YbetaPars1)
+          Yhat_z1m1_mc = c(matM_m1_mc %*% YbetaPars1)
+          for (j in 1:J) {
+            whichUindex = which(Uindex==j)
+            if(length(whichUindex)>0){
+              Yhat_z0m0_mc[whichUindex] = Yhat_z0m0_mc[whichUindex] + Ypsi_N0[j]
+              Yhat_z1m0_mc[whichUindex] = Yhat_z1m0_mc[whichUindex] + Ypsi_N1[j]
+              Yhat_z1m1_mc[whichUindex] = Yhat_z1m1_mc[whichUindex] + Ypsi_N1[j]
+            }
+          }
           Yhat_z0m0_mc = rnorm(N, Yhat_z0m0_mc, YsigPars0)
           Yhat_z1m0_mc = rnorm(N, Yhat_z1m0_mc, YsigPars1)
           Yhat_z1m1_mc = rnorm(N, Yhat_z1m1_mc, YsigPars1)
@@ -1087,9 +1074,9 @@ HBBmediationPOST = function(object, # object from predict(rBARTmediation)
           }
         }
       } else if (object0$typeM == "binary") {
-        if (object0$modelM == "probit") {
+        if (object$modelM == "probit") {
           callM = pnorm
-        } else if (object0$modelM == "logit") {
+        } else if (object$modelM == "logit") {
           callM = plogis
         }
         
@@ -1117,42 +1104,42 @@ HBBmediationPOST = function(object, # object from predict(rBARTmediation)
           
           # random-effects
           YMpsi_J0 = rmvn_cpp(J, rep(0,2), YMpsiPars0) # *sqrt(diag(YMpsiPars0)) # rbind(YpsiPars0,MpsiPars0)
-          Ypsi_N0 = YMpsi_J0[1,Uindex]
-          Mpsi_N0 = YMpsi_J0[2,Uindex]
+          Ypsi_N0 = YMpsi_J0[1,]
+          Mpsi_N0 = YMpsi_J0[2,]
           
           YMpsi_J1 = rmvn_cpp(J, rep(0,2), YMpsiPars1) # *sqrt(diag(YMpsiPars1)) # rbind(YpsiPars1,MpsiPars1)
-          Ypsi_N1 = YMpsi_J1[1,Uindex]
-          Mpsi_N1 = YMpsi_J1[2,Uindex]
+          Ypsi_N1 = YMpsi_J1[1,]
+          Mpsi_N1 = YMpsi_J1[2,]
           
           # Normal model for continuous M
           # draw M0_mc and M1_mc
-          Mhat_z0_mc = matX.test %*% MbetaPars0 + Mpsi_N0
-          Mhat_z1_mc = matX.test %*% MbetaPars1 + Mpsi_N1
-          # for (j in 1:J) {
-          #   whichUindex = which(Uindex==j)
-          #   if(length(whichUindex)>0){
-          #     Mhat_z0_mc[whichUindex] = Mhat_z0_mc[whichUindex] + Mpsi_N0[j]
-          #     Mhat_z1_mc[whichUindex] = Mhat_z1_mc[whichUindex] + Mpsi_N1[j]
-          #   }
-          # }
-          M0_mc = rbinom(N, 1, callM(Mhat_z0_mc))
-          M1_mc = rbinom(N, 1, callM(Mhat_z1_mc))
+          Mhat_z0_mc = matX.test %*% MbetaPars0
+          Mhat_z1_mc = matX.test %*% MbetaPars1
+          for (j in 1:J) {
+            whichUindex = which(Uindex==j)
+            if(length(whichUindex)>0){
+              Mhat_z0_mc[whichUindex] = Mhat_z0_mc[whichUindex] + Mpsi_N0[j]
+              Mhat_z1_mc[whichUindex] = Mhat_z1_mc[whichUindex] + Mpsi_N1[j]
+            }
+          }
+          M0_mc = rbinom(N,1, callM(Mhat_z0_mc))
+          M1_mc = rbinom(N,1, callM(Mhat_z1_mc))
           
           # Normal model for continuous Y
           # draw Y_z0m0_mc, Y_z1m0_mc, Y_z1m1_mc
           matM_m0_mc = cbind(1, M0_mc, X.test)
           matM_m1_mc = cbind(1, M1_mc, X.test)
-          Yhat_z0m0_mc = c(matM_m0_mc %*% YbetaPars0) + Ypsi_N0
-          Yhat_z1m0_mc = c(matM_m0_mc %*% YbetaPars1) + Ypsi_N1
-          Yhat_z1m1_mc = c(matM_m1_mc %*% YbetaPars1) + Ypsi_N1
-          # for (j in 1:J) {
-          #   whichUindex = which(Uindex==j)
-          #   if(length(whichUindex)>0){
-          #     Yhat_z0m0_mc[whichUindex] = Yhat_z0m0_mc[whichUindex] + Ypsi_N0[j]
-          #     Yhat_z1m0_mc[whichUindex] = Yhat_z1m0_mc[whichUindex] + Ypsi_N1[j]
-          #     Yhat_z1m1_mc[whichUindex] = Yhat_z1m1_mc[whichUindex] + Ypsi_N1[j]
-          #   }
-          # }
+          Yhat_z0m0_mc = c(matM_m0_mc %*% YbetaPars0)
+          Yhat_z1m0_mc = c(matM_m0_mc %*% YbetaPars1)
+          Yhat_z1m1_mc = c(matM_m1_mc %*% YbetaPars1)
+          for (j in 1:J) {
+            whichUindex = which(Uindex==j)
+            if(length(whichUindex)>0){
+              Yhat_z0m0_mc[whichUindex] = Yhat_z0m0_mc[whichUindex] + Ypsi_N0[j]
+              Yhat_z1m0_mc[whichUindex] = Yhat_z1m0_mc[whichUindex] + Ypsi_N1[j]
+              Yhat_z1m1_mc[whichUindex] = Yhat_z1m1_mc[whichUindex] + Ypsi_N1[j]
+            }
+          }
           Yhat_z0m0_mc = rnorm(N, Yhat_z0m0_mc, YsigPars0)
           Yhat_z1m0_mc = rnorm(N, Yhat_z1m0_mc, YsigPars1)
           Yhat_z1m1_mc = rnorm(N, Yhat_z1m1_mc, YsigPars1)
@@ -1190,55 +1177,59 @@ HBBmediationPOST = function(object, # object from predict(rBARTmediation)
         for (post_reps in 1:n_MCMC) {
           # -----------------------------------------------------------------------------
           YbetaPars0 = object0$MCMCposteriors$YbetaLists[[post_reps]]
+          Ysig2Pars0 = object0$MCMCposteriors$Ysig2Lists[[post_reps]]
           YpsiPars0  = object0$MCMCposteriors$YpsiLists[[post_reps]]
           MbetaPars0 = object0$MCMCposteriors$MbetaLists[[post_reps]]
           Msig2Pars0 = object0$MCMCposteriors$Msig2Lists[[post_reps]]
           YMpsiPars0 = object0$MCMCposteriors$YMpsiLists[[post_reps]]
+          YsigPars0  = sqrt(Ysig2Pars0)
           
           YbetaPars1 = object1$MCMCposteriors$YbetaLists[[post_reps]]
+          Ysig2Pars1 = object1$MCMCposteriors$Ysig2Lists[[post_reps]]
           YpsiPars1  = object1$MCMCposteriors$YpsiLists[[post_reps]]
           MbetaPars1 = object1$MCMCposteriors$MbetaLists[[post_reps]]
           Msig2Pars1 = object1$MCMCposteriors$Msig2Lists[[post_reps]]
           YMpsiPars1 = object1$MCMCposteriors$YMpsiLists[[post_reps]]
+          YsigPars1  = sqrt(Ysig2Pars1)
           
           # random-effects
           YMpsi_J0 = rmvn_cpp(J, rep(0,2), YMpsiPars0) # *sqrt(diag(YMpsiPars0)) # rbind(YpsiPars0,MpsiPars0)
-          Ypsi_N0 = YMpsi_J0[1,Uindex]
-          Mpsi_N0 = YMpsi_J0[2,Uindex]
+          Ypsi_N0 = YMpsi_J0[1,]
+          Mpsi_N0 = YMpsi_J0[2,]
           
           YMpsi_J1 = rmvn_cpp(J, rep(0,2), YMpsiPars1) # *sqrt(diag(YMpsiPars1)) # rbind(YpsiPars1,MpsiPars1)
-          Ypsi_N1 = YMpsi_J1[1,Uindex]
-          Mpsi_N1 = YMpsi_J1[2,Uindex]
+          Ypsi_N1 = YMpsi_J1[1,]
+          Mpsi_N1 = YMpsi_J1[2,]
           
           # Normal model for continuous M
           # draw M0_mc and M1_mc
-          Mhat_z0_mc = matX.test %*% MbetaPars0 + Mpsi_N0
-          Mhat_z1_mc = matX.test %*% MbetaPars1 + Mpsi_N1
-          # for (j in 1:J) {
-          #   whichUindex = which(Uindex==j)
-          #   if(length(whichUindex)>0){
-          #     Mhat_z0_mc[whichUindex] = Mhat_z0_mc[whichUindex] + Mpsi_N0[j]
-          #     Mhat_z1_mc[whichUindex] = Mhat_z1_mc[whichUindex] + Mpsi_N1[j]
-          #   }
-          # }
-          M0_mc = rbinom(N,1, pnorm(Mhat_z0_mc))
-          M1_mc = rbinom(N,1, pnorm(Mhat_z1_mc))
+          Mhat_z0_mc = matX.test %*% MbetaPars0
+          Mhat_z1_mc = matX.test %*% MbetaPars1
+          for (j in 1:J) {
+            whichUindex = which(Uindex==j)
+            if(length(whichUindex)>0){
+              Mhat_z0_mc[whichUindex] = Mhat_z0_mc[whichUindex] + Mpsi_N0[j]
+              Mhat_z1_mc[whichUindex] = Mhat_z1_mc[whichUindex] + Mpsi_N1[j]
+            }
+          }
+          M0_mc = rbinom(N,1, callM(Mhat_z0_mc))
+          M1_mc = rbinom(N,1, callM(Mhat_z1_mc))
           
           # Normal model for continuous Y
           # draw Y_z0m0_mc, Y_z1m0_mc, Y_z1m1_mc
           matM_m0_mc = cbind(1, M0_mc, X.test)
           matM_m1_mc = cbind(1, M1_mc, X.test)
-          Yhat_z0m0_mc = c(matM_m0_mc %*% YbetaPars0) + Ypsi_N0
-          Yhat_z1m0_mc = c(matM_m0_mc %*% YbetaPars1) + Ypsi_N1
-          Yhat_z1m1_mc = c(matM_m1_mc %*% YbetaPars1) + Ypsi_N1
-          # for (j in 1:J) {
-          #   whichUindex = which(Uindex==j)
-          #   if(length(whichUindex)>0){
-          #     Yhat_z0m0_mc[whichUindex] = Yhat_z0m0_mc[whichUindex] + Ypsi_N0[j]
-          #     Yhat_z1m0_mc[whichUindex] = Yhat_z1m0_mc[whichUindex] + Ypsi_N1[j]
-          #     Yhat_z1m1_mc[whichUindex] = Yhat_z1m1_mc[whichUindex] + Ypsi_N1[j]
-          #   }
-          # }
+          Yhat_z0m0_mc = c(matM_m0_mc %*% YbetaPars0)
+          Yhat_z1m0_mc = c(matM_m0_mc %*% YbetaPars1)
+          Yhat_z1m1_mc = c(matM_m1_mc %*% YbetaPars1)
+          for (j in 1:J) {
+            whichUindex = which(Uindex==j)
+            if(length(whichUindex)>0){
+              Yhat_z0m0_mc[whichUindex] = Yhat_z0m0_mc[whichUindex] + Ypsi_N0[j]
+              Yhat_z1m0_mc[whichUindex] = Yhat_z1m0_mc[whichUindex] + Ypsi_N1[j]
+              Yhat_z1m1_mc[whichUindex] = Yhat_z1m1_mc[whichUindex] + Ypsi_N1[j]
+            }
+          }
           Yhat_z0m0_mc = rbinom(N, 1, plogis(Yhat_z0m0_mc))
           Yhat_z1m0_mc = rbinom(N, 1, plogis(Yhat_z1m0_mc))
           Yhat_z1m1_mc = rbinom(N, 1, plogis(Yhat_z1m1_mc))
@@ -1362,6 +1353,9 @@ TSBBmediationPOST = function(object, # object from predict(rBARTmediation)
   # a constant ratio of cluster-level confounders and individual-level confounders
   # zeta = 0.5
   
+  object0 = object$object0
+  object1 = object$object1
+  
   # Significance Level alpha
   level = 0.05
   
@@ -1409,10 +1403,7 @@ TSBBmediationPOST = function(object, # object from predict(rBARTmediation)
   xi_dist = exp(-((zeta)*Vxi_dist + (1-zeta)*Cxi_dist)/chi)
   xi_distPOST = sapply(1:J, function(l) alpha_ome[l]*xi_dist[,l]) + diag(J)
   
-  if (inherits(object,"rBARTmediation")) {
-    object0 = object$object0
-    object1 = object$object1
-    
+  if (inherits(object$object0,"rBARTmediation")) {
     # predict(rBARTmediation)
     # BARTfitPRED = predict(object, X.testTSBB, UindexTSBB)
     BARTfitPRED = predict(object0, object1, X.testTSBB, UindexTSBB)
@@ -1461,26 +1452,18 @@ TSBBmediationPOST = function(object, # object from predict(rBARTmediation)
         cat("Post-Processing",post_reps,"(",(post_reps/n_MCMC)*100,"%)","Time:",date(),"\n")
       }
     }
-  } else if (inherits(object,"rGLMmediation")) {
-    object0 = object$object0
-    object1 = object$object1
-    
-    # 
-    z0 = 0
-    z1 = 1
-    
+  } else if (inherits(object0,"rGLMmediation")) {
     n_MCMC = object0$constants$n_MCMC
-    
-    # Define interation check
-    iter_check = floor(n_MCMC/10)
-    
-    # Causal Effects
-    E_Y_z0m0 = numeric(n_MCMC)
-    E_Y_z1m0 = numeric(n_MCMC)
-    E_Y_z1m1 = numeric(n_MCMC)
     
     if (object0$typeY == "continuous"){
       if (object0$typeM == "continuous") {
+        # Define interation check
+        iter_check = floor(n_MCMC/10)
+        
+        # Causal Effects
+        E_Y_z0m0 = numeric(n_MCMC)
+        E_Y_z1m0 = numeric(n_MCMC)
+        E_Y_z1m1 = numeric(n_MCMC)
         for (post_reps in 1:n_MCMC) {
           # -----------------------------------------------------------------------------
           YbetaPars0 = object0$MCMCposteriors$YbetaLists[[post_reps]]
@@ -1505,19 +1488,24 @@ TSBBmediationPOST = function(object, # object from predict(rBARTmediation)
           
           # random-effects
           YMpsi_J0 = rmvn_cpp(J, rep(0,2), YMpsiPars0) # *sqrt(diag(YMpsiPars0)) # rbind(YpsiPars0,MpsiPars0)
-          Ypsi_N0 = YMpsi_J0[1,UindexTSBB]
-          Mpsi_N0 = YMpsi_J0[2,UindexTSBB]
+          Ypsi_N0 = YMpsi_J0[1,]
+          Mpsi_N0 = YMpsi_J0[2,]
           
           YMpsi_J1 = rmvn_cpp(J, rep(0,2), YMpsiPars1) # *sqrt(diag(YMpsiPars1)) # rbind(YpsiPars1,MpsiPars1)
-          Ypsi_N1 = YMpsi_J1[1,UindexTSBB]
-          Mpsi_N1 = YMpsi_J1[2,UindexTSBB]
+          Ypsi_N1 = YMpsi_J1[1,]
+          Mpsi_N1 = YMpsi_J1[2,]
           
           # Normal model for continuous M
           # draw M0_mc and M1_mc
           Mhat_z0_mc = matX.testTSBB %*% MbetaPars0
           Mhat_z1_mc = matX.testTSBB %*% MbetaPars1
-          Mhat_z0_mc = Mhat_z0_mc + Mpsi_N0
-          Mhat_z1_mc = Mhat_z1_mc + Mpsi_N1
+          for (j in 1:J) {
+            whichUindex = which(UindexTSBB==j)
+            if(length(whichUindex)>0){
+              Mhat_z0_mc[whichUindex] = Mhat_z0_mc[whichUindex] + Mpsi_N0[j]
+              Mhat_z1_mc[whichUindex] = Mhat_z1_mc[whichUindex] + Mpsi_N1[j]
+            }
+          }
           M0_mc = rnorm(NJ, Mhat_z0_mc, MsigPars0)
           M1_mc = rnorm(NJ, Mhat_z1_mc, MsigPars1)
           
@@ -1525,12 +1513,20 @@ TSBBmediationPOST = function(object, # object from predict(rBARTmediation)
           # draw Y_z0m0_mc, Y_z1m0_mc, Y_z1m1_mc
           matM_m0_mc = cbind(1, M0_mc, X.testTSBB)
           matM_m1_mc = cbind(1, M1_mc, X.testTSBB)
-          Yhat_z0m0_mc = c(matM_m0_mc %*% YbetaPars0) + Ypsi_N0
-          Yhat_z1m0_mc = c(matM_m0_mc %*% YbetaPars1) + Ypsi_N1
-          Yhat_z1m1_mc = c(matM_m1_mc %*% YbetaPars1) + Ypsi_N1
-          # Yhat_z0m0_mc = rnorm(NJ, Yhat_z0m0_mc, YsigPars0)
-          # Yhat_z1m0_mc = rnorm(NJ, Yhat_z1m0_mc, YsigPars1)
-          # Yhat_z1m1_mc = rnorm(NJ, Yhat_z1m1_mc, YsigPars1)
+          Yhat_z0m0_mc = c(matM_m0_mc %*% YbetaPars0)
+          Yhat_z1m0_mc = c(matM_m0_mc %*% YbetaPars1)
+          Yhat_z1m1_mc = c(matM_m1_mc %*% YbetaPars1)
+          for (j in 1:J) {
+            whichUindex = which(UindexTSBB==j)
+            if(length(whichUindex)>0){
+              Yhat_z0m0_mc[whichUindex] = Yhat_z0m0_mc[whichUindex] + Ypsi_N0[j]
+              Yhat_z1m0_mc[whichUindex] = Yhat_z1m0_mc[whichUindex] + Ypsi_N1[j]
+              Yhat_z1m1_mc[whichUindex] = Yhat_z1m1_mc[whichUindex] + Ypsi_N1[j]
+            }
+          }
+          Yhat_z0m0_mc = rnorm(NJ, Yhat_z0m0_mc, YsigPars0)
+          Yhat_z1m0_mc = rnorm(NJ, Yhat_z1m0_mc, YsigPars1)
+          Yhat_z1m1_mc = rnorm(NJ, Yhat_z1m1_mc, YsigPars1)
           
           # ------------------------------------------------------------------------------
           # Update parameters for cluster-level confounder (rho: J X 1 vector)
@@ -1564,9 +1560,17 @@ TSBBmediationPOST = function(object, # object from predict(rBARTmediation)
           }
         }
       } else if (object0$typeM == "binary") {
-        if (object0$modelM == "probit") {
+        
+        # Define interation check
+        iter_check = floor(n_MCMC/10)
+        
+        # Causal Effects
+        E_Y_z0m0 = numeric(n_MCMC)
+        E_Y_z1m0 = numeric(n_MCMC)
+        E_Y_z1m1 = numeric(n_MCMC)
+        if (object$modelM == "probit") {
           callM = pnorm
-        } else if (object0$modelM == "logit") {
+        } else if (object$modelM == "logit") {
           callM = plogis
         }
         
@@ -1576,31 +1580,42 @@ TSBBmediationPOST = function(object, # object from predict(rBARTmediation)
           Ysig2Pars0 = object0$MCMCposteriors$Ysig2Lists[[post_reps]]
           YpsiPars0  = object0$MCMCposteriors$YpsiLists[[post_reps]]
           MbetaPars0 = object0$MCMCposteriors$MbetaLists[[post_reps]]
+          Msig2Pars0 = object0$MCMCposteriors$Msig2Lists[[post_reps]]
           MpsiPars0  = object0$MCMCposteriors$MpsiLists[[post_reps]]
           YMpsiPars0 = object0$MCMCposteriors$YMpsiLists[[post_reps]]
           YsigPars0  = sqrt(Ysig2Pars0)
+          MsigPars0  = sqrt(Msig2Pars0)
           
           YbetaPars1 = object1$MCMCposteriors$YbetaLists[[post_reps]]
           Ysig2Pars1 = object1$MCMCposteriors$Ysig2Lists[[post_reps]]
           YpsiPars1  = object1$MCMCposteriors$YpsiLists[[post_reps]]
           MbetaPars1 = object1$MCMCposteriors$MbetaLists[[post_reps]]
+          Msig2Pars1 = object1$MCMCposteriors$Msig2Lists[[post_reps]]
           MpsiPars1  = object1$MCMCposteriors$MpsiLists[[post_reps]]
           YMpsiPars1 = object1$MCMCposteriors$YMpsiLists[[post_reps]]
           YsigPars1  = sqrt(Ysig2Pars1)
+          MsigPars1  = sqrt(Msig2Pars1)
           
           # random-effects
           YMpsi_J0 = rmvn_cpp(J, rep(0,2), YMpsiPars0) # *sqrt(diag(YMpsiPars0)) # rbind(YpsiPars0,MpsiPars0)
-          Ypsi_N0 = YMpsi_J0[1,UindexTSBB]
-          Mpsi_N0 = YMpsi_J0[2,UindexTSBB]
+          Ypsi_N0 = YMpsi_J0[1,]
+          Mpsi_N0 = YMpsi_J0[2,]
           
           YMpsi_J1 = rmvn_cpp(J, rep(0,2), YMpsiPars1) # *sqrt(diag(YMpsiPars1)) # rbind(YpsiPars1,MpsiPars1)
-          Ypsi_N1 = YMpsi_J1[1,UindexTSBB]
-          Mpsi_N1 = YMpsi_J1[2,UindexTSBB]
+          Ypsi_N1 = YMpsi_J1[1,]
+          Mpsi_N1 = YMpsi_J1[2,]
           
           # Normal model for continuous M
           # draw M0_mc and M1_mc
-          Mhat_z0_mc = matX.testTSBB %*% MbetaPars0 + Mpsi_N0
-          Mhat_z1_mc = matX.testTSBB %*% MbetaPars1 + Mpsi_N1
+          Mhat_z0_mc = matX.testTSBB %*% MbetaPars0
+          Mhat_z1_mc = matX.testTSBB %*% MbetaPars1
+          for (j in 1:J) {
+            whichUindex = which(UindexTSBB==j)
+            if(length(whichUindex)>0){
+              Mhat_z0_mc[whichUindex] = Mhat_z0_mc[whichUindex] + Mpsi_N0[j]
+              Mhat_z1_mc[whichUindex] = Mhat_z1_mc[whichUindex] + Mpsi_N1[j]
+            }
+          }
           M0_mc = rbinom(NJ, 1, callM(Mhat_z0_mc))
           M1_mc = rbinom(NJ, 1, callM(Mhat_z1_mc))
           
@@ -1608,9 +1623,17 @@ TSBBmediationPOST = function(object, # object from predict(rBARTmediation)
           # draw Y_z0m0_mc, Y_z1m0_mc, Y_z1m1_mc
           matM_m0_mc = cbind(1, M0_mc, X.testTSBB)
           matM_m1_mc = cbind(1, M1_mc, X.testTSBB)
-          Yhat_z0m0_mc = c(matM_m0_mc %*% YbetaPars0) + Ypsi_N0
-          Yhat_z1m0_mc = c(matM_m0_mc %*% YbetaPars1) + Ypsi_N1
-          Yhat_z1m1_mc = c(matM_m1_mc %*% YbetaPars1) + Ypsi_N1
+          Yhat_z0m0_mc = c(matM_m0_mc %*% YbetaPars0)
+          Yhat_z1m0_mc = c(matM_m0_mc %*% YbetaPars1)
+          Yhat_z1m1_mc = c(matM_m1_mc %*% YbetaPars1)
+          for (j in 1:J) {
+            whichUindex = which(UindexTSBB==j)
+            if(length(whichUindex)>0){
+              Yhat_z0m0_mc[whichUindex] = Yhat_z0m0_mc[whichUindex] + Ypsi_N0[j]
+              Yhat_z1m0_mc[whichUindex] = Yhat_z1m0_mc[whichUindex] + Ypsi_N1[j]
+              Yhat_z1m1_mc[whichUindex] = Yhat_z1m1_mc[whichUindex] + Ypsi_N1[j]
+            }
+          }
           Yhat_z0m0_mc = rnorm(NJ, Yhat_z0m0_mc, YsigPars0)
           Yhat_z1m0_mc = rnorm(NJ, Yhat_z1m0_mc, YsigPars1)
           Yhat_z1m1_mc = rnorm(NJ, Yhat_z1m1_mc, YsigPars1)
@@ -1632,6 +1655,7 @@ TSBBmediationPOST = function(object, # object from predict(rBARTmediation)
             }
             RhoOmegaPi[((N*(l-1)+1):(N*l))] = rhoPars[l]*RhoOmegaPitemp
           }
+          
           E_Y_z0m0_mc = sum(RhoOmegaPi * Yhat_z0m0_mc)
           E_Y_z1m0_mc = sum(RhoOmegaPi * Yhat_z1m0_mc)
           E_Y_z1m1_mc = sum(RhoOmegaPi * Yhat_z1m1_mc)
@@ -1673,42 +1697,42 @@ TSBBmediationPOST = function(object, # object from predict(rBARTmediation)
           
           # random-effects
           YMpsi_J0 = rmvn_cpp(J, rep(0,2), YMpsiPars0) # *sqrt(diag(YMpsiPars0)) # rbind(YpsiPars0,MpsiPars0)
-          Ypsi_N0 = YMpsi_J0[1,UindexTSBB]
-          Mpsi_N0 = YMpsi_J0[2,UindexTSBB]
+          Ypsi_N0 = YMpsi_J0[1,]
+          Mpsi_N0 = YMpsi_J0[2,]
           
           YMpsi_J1 = rmvn_cpp(J, rep(0,2), YMpsiPars1) # *sqrt(diag(YMpsiPars1)) # rbind(YpsiPars1,MpsiPars1)
-          Ypsi_N1 = YMpsi_J1[1,UindexTSBB]
-          Mpsi_N1 = YMpsi_J1[2,UindexTSBB]
+          Ypsi_N1 = YMpsi_J1[1,]
+          Mpsi_N1 = YMpsi_J1[2,]
           
           # Normal model for continuous M
           # draw M0_mc and M1_mc
-          Mhat_z0_mc = matX.testTSBB %*% MbetaPars0 + Mpsi_N0
-          Mhat_z1_mc = matX.testTSBB %*% MbetaPars1 + Mpsi_N1
-          # for (j in 1:J) {
-          #   whichUindex = which(UindexTSBB==j)
-          #   if(length(whichUindex)>0){
-          #     Mhat_z0_mc[whichUindex] = Mhat_z0_mc[whichUindex] + Mpsi_N0[j]
-          #     Mhat_z1_mc[whichUindex] = Mhat_z1_mc[whichUindex] + Mpsi_N1[j]
-          #   }
-          # }
-          M0_mc = rbinom(NJ,1, pnorm(Mhat_z0_mc))
-          M1_mc = rbinom(NJ,1, pnorm(Mhat_z1_mc))
+          Mhat_z0_mc = matX.testTSBB %*% MbetaPars0
+          Mhat_z1_mc = matX.testTSBB %*% MbetaPars1
+          for (j in 1:J) {
+            whichUindex = which(UindexTSBB==j)
+            if(length(whichUindex)>0){
+              Mhat_z0_mc[whichUindex] = Mhat_z0_mc[whichUindex] + Mpsi_N0[j]
+              Mhat_z1_mc[whichUindex] = Mhat_z1_mc[whichUindex] + Mpsi_N1[j]
+            }
+          }
+          M0_mc = rbinom(NJ,1, callM(Mhat_z0_mc))
+          M1_mc = rbinom(NJ,1, callM(Mhat_z1_mc))
           
           # Normal model for continuous Y
           # draw Y_z0m0_mc, Y_z1m0_mc, Y_z1m1_mc
           matM_m0_mc = cbind(1, M0_mc, X.testTSBB)
           matM_m1_mc = cbind(1, M1_mc, X.testTSBB)
-          Yhat_z0m0_mc = c(matM_m0_mc %*% YbetaPars0) + Ypsi_N0
-          Yhat_z1m0_mc = c(matM_m0_mc %*% YbetaPars1) + Ypsi_N1
-          Yhat_z1m1_mc = c(matM_m1_mc %*% YbetaPars1) + Ypsi_N1
-          # for (j in 1:J) {
-          #   whichUindex = which(UindexTSBB==j)
-          #   if(length(whichUindex)>0){
-          #     Yhat_z0m0_mc[whichUindex] = Yhat_z0m0_mc[whichUindex] + Ypsi_N0[j]
-          #     Yhat_z1m0_mc[whichUindex] = Yhat_z1m0_mc[whichUindex] + Ypsi_N1[j]
-          #     Yhat_z1m1_mc[whichUindex] = Yhat_z1m1_mc[whichUindex] + Ypsi_N1[j]
-          #   }
-          # }
+          Yhat_z0m0_mc = c(matM_m0_mc %*% YbetaPars0)
+          Yhat_z1m0_mc = c(matM_m0_mc %*% YbetaPars1)
+          Yhat_z1m1_mc = c(matM_m1_mc %*% YbetaPars1)
+          for (j in 1:J) {
+            whichUindex = which(UindexTSBB==j)
+            if(length(whichUindex)>0){
+              Yhat_z0m0_mc[whichUindex] = Yhat_z0m0_mc[whichUindex] + Ypsi_N0[j]
+              Yhat_z1m0_mc[whichUindex] = Yhat_z1m0_mc[whichUindex] + Ypsi_N1[j]
+              Yhat_z1m1_mc[whichUindex] = Yhat_z1m1_mc[whichUindex] + Ypsi_N1[j]
+            }
+          }
           Yhat_z0m0_mc = rbinom(NJ, 1, plogis(Yhat_z0m0_mc))
           Yhat_z1m0_mc = rbinom(NJ, 1, plogis(Yhat_z1m0_mc))
           Yhat_z1m1_mc = rbinom(NJ, 1, plogis(Yhat_z1m1_mc))
@@ -1730,6 +1754,7 @@ TSBBmediationPOST = function(object, # object from predict(rBARTmediation)
             }
             RhoOmegaPi[((N*(l-1)+1):(N*l))] = rhoPars[l]*RhoOmegaPitemp
           }
+          
           E_Y_z0m0_mc = sum(RhoOmegaPi * Yhat_z0m0_mc)
           E_Y_z1m0_mc = sum(RhoOmegaPi * Yhat_z1m0_mc)
           E_Y_z1m1_mc = sum(RhoOmegaPi * Yhat_z1m1_mc)
@@ -1840,6 +1865,9 @@ TSBBmediationPOSTsim = function(object, # object from predict(rBARTmediation)
   # Significance Level alpha
   level = 0.05
   
+  object0 = object$object0
+  object1 = object$object1
+  
   # Significance Level alpha
   level = 0.05
   
@@ -1900,10 +1928,7 @@ TSBBmediationPOSTsim = function(object, # object from predict(rBARTmediation)
     }
   }
   
-  if (inherits(object,"rBARTmediation")) {
-    object0 = object$object0
-    object1 = object$object1
-    
+  if (inherits(object$object0,"rBARTmediation")) {
     # predict(rBARTmediation)
     # BARTfitPRED = predict(object, X.testTSBB, UindexTSBB)
     BARTfitPRED = predict(object0, object1, X.testTSBB, UindexTSBB)
@@ -1962,14 +1987,7 @@ TSBBmediationPOSTsim = function(object, # object from predict(rBARTmediation)
         cat("Post-Processing",post_reps,"(",(post_reps/n_MCMC)*100,"%)","Time:",date(),"\n")
       }
     }
-  } else if (inherits(object,"rGLMmediation")) {
-    object0 = object$object0
-    object1 = object$object1
-    
-    # 
-    z0 = 0
-    z1 = 1
-    
+  } else if (inherits(object0,"rGLMmediation")) {
     n_MCMC = object0$constants$n_MCMC
     
     # Define interation check
@@ -2005,24 +2023,24 @@ TSBBmediationPOSTsim = function(object, # object from predict(rBARTmediation)
           
           # random-effects
           YMpsi_J0 = rmvn_cpp(J, rep(0,2), YMpsiPars0) # *sqrt(diag(YMpsiPars0)) # rbind(YpsiPars0,MpsiPars0)
-          Ypsi_N0 = YMpsi_J0[1,UindexTSBB]
-          Mpsi_N0 = YMpsi_J0[2,UindexTSBB]
+          Ypsi_N0 = YMpsi_J0[1,]
+          Mpsi_N0 = YMpsi_J0[2,]
           
           YMpsi_J1 = rmvn_cpp(J, rep(0,2), YMpsiPars1) # *sqrt(diag(YMpsiPars1)) # rbind(YpsiPars1,MpsiPars1)
-          Ypsi_N1 = YMpsi_J1[1,UindexTSBB]
-          Mpsi_N1 = YMpsi_J1[2,UindexTSBB]
+          Ypsi_N1 = YMpsi_J1[1,]
+          Mpsi_N1 = YMpsi_J1[2,]
           
           # Normal model for continuous M
           # draw M0_mc and M1_mc
-          Mhat_z0_mc = matX.testTSBB %*% MbetaPars0 + Mpsi_N0
-          Mhat_z1_mc = matX.testTSBB %*% MbetaPars1 + Mpsi_N1
-          # for (j in 1:J) {
-          #   whichUindex = which(UindexTSBB==j)
-          #   if(length(whichUindex)>0){
-          #     Mhat_z0_mc[whichUindex] = Mhat_z0_mc[whichUindex] + Mpsi_N0[j]
-          #     Mhat_z1_mc[whichUindex] = Mhat_z1_mc[whichUindex] + Mpsi_N1[j]
-          #   }
-          # }
+          Mhat_z0_mc = matX.testTSBB %*% MbetaPars0
+          Mhat_z1_mc = matX.testTSBB %*% MbetaPars1
+          for (j in 1:J) {
+            whichUindex = which(UindexTSBB==j)
+            if(length(whichUindex)>0){
+              Mhat_z0_mc[whichUindex] = Mhat_z0_mc[whichUindex] + Mpsi_N0[j]
+              Mhat_z1_mc[whichUindex] = Mhat_z1_mc[whichUindex] + Mpsi_N1[j]
+            }
+          }
           M0_mc = rnorm(NJ, Mhat_z0_mc, MsigPars0)
           M1_mc = rnorm(NJ, Mhat_z1_mc, MsigPars1)
           
@@ -2030,17 +2048,17 @@ TSBBmediationPOSTsim = function(object, # object from predict(rBARTmediation)
           # draw Y_z0m0_mc, Y_z1m0_mc, Y_z1m1_mc
           matM_m0_mc = cbind(1, M0_mc, X.testTSBB)
           matM_m1_mc = cbind(1, M1_mc, X.testTSBB)
-          Yhat_z0m0_mc = c(matM_m0_mc %*% YbetaPars0) + Ypsi_N0
-          Yhat_z1m0_mc = c(matM_m0_mc %*% YbetaPars1) + Ypsi_N1
-          Yhat_z1m1_mc = c(matM_m1_mc %*% YbetaPars1) + Ypsi_N1
-          # for (j in 1:J) {
-          #   whichUindex = which(UindexTSBB==j)
-          #   if(length(whichUindex)>0){
-          #     Yhat_z0m0_mc[whichUindex] = Yhat_z0m0_mc[whichUindex] + Ypsi_N0[j]
-          #     Yhat_z1m0_mc[whichUindex] = Yhat_z1m0_mc[whichUindex] + Ypsi_N1[j]
-          #     Yhat_z1m1_mc[whichUindex] = Yhat_z1m1_mc[whichUindex] + Ypsi_N1[j]
-          #   }
-          # }
+          Yhat_z0m0_mc = c(matM_m0_mc %*% YbetaPars0)
+          Yhat_z1m0_mc = c(matM_m0_mc %*% YbetaPars1)
+          Yhat_z1m1_mc = c(matM_m1_mc %*% YbetaPars1)
+          for (j in 1:J) {
+            whichUindex = which(UindexTSBB==j)
+            if(length(whichUindex)>0){
+              Yhat_z0m0_mc[whichUindex] = Yhat_z0m0_mc[whichUindex] + Ypsi_N0[j]
+              Yhat_z1m0_mc[whichUindex] = Yhat_z1m0_mc[whichUindex] + Ypsi_N1[j]
+              Yhat_z1m1_mc[whichUindex] = Yhat_z1m1_mc[whichUindex] + Ypsi_N1[j]
+            }
+          }
           Yhat_z0m0_mc = rnorm(NJ, Yhat_z0m0_mc, YsigPars0)
           Yhat_z1m0_mc = rnorm(NJ, Yhat_z1m0_mc, YsigPars1)
           Yhat_z1m1_mc = rnorm(NJ, Yhat_z1m1_mc, YsigPars1)
@@ -2086,9 +2104,9 @@ TSBBmediationPOSTsim = function(object, # object from predict(rBARTmediation)
           }
         }
       } else if (object0$typeM == "binary") {
-        if (object0$modelM == "probit") {
+        if (object$modelM == "probit") {
           callM = pnorm
-        } else if (object0$modelM == "logit") {
+        } else if (object$modelM == "logit") {
           callM = plogis
         }
         
@@ -2098,38 +2116,43 @@ TSBBmediationPOSTsim = function(object, # object from predict(rBARTmediation)
           Ysig2Pars0 = object0$MCMCposteriors$Ysig2Lists[[post_reps]]
           YpsiPars0  = object0$MCMCposteriors$YpsiLists[[post_reps]]
           MbetaPars0 = object0$MCMCposteriors$MbetaLists[[post_reps]]
+          Msig2Pars0 = object0$MCMCposteriors$Msig2Lists[[post_reps]]
           MpsiPars0  = object0$MCMCposteriors$MpsiLists[[post_reps]]
           YMpsiPars0 = object0$MCMCposteriors$YMpsiLists[[post_reps]]
           YsigPars0  = sqrt(Ysig2Pars0)
+          MsigPars0  = sqrt(Msig2Pars0)
           
           YbetaPars1 = object1$MCMCposteriors$YbetaLists[[post_reps]]
           Ysig2Pars1 = object1$MCMCposteriors$Ysig2Lists[[post_reps]]
           YpsiPars1  = object1$MCMCposteriors$YpsiLists[[post_reps]]
           MbetaPars1 = object1$MCMCposteriors$MbetaLists[[post_reps]]
+          Msig2Pars1 = object1$MCMCposteriors$Msig2Lists[[post_reps]]
           MpsiPars1  = object1$MCMCposteriors$MpsiLists[[post_reps]]
           YMpsiPars1 = object1$MCMCposteriors$YMpsiLists[[post_reps]]
           YsigPars1  = sqrt(Ysig2Pars1)
+          MsigPars1  = sqrt(Msig2Pars1)
           
           # random-effects
           YMpsi_J0 = rmvn_cpp(J, rep(0,2), YMpsiPars0) # *sqrt(diag(YMpsiPars0)) # rbind(YpsiPars0,MpsiPars0)
-          Ypsi_N0 = YMpsi_J0[1,UindexTSBB]
-          Mpsi_N0 = YMpsi_J0[2,UindexTSBB]
+          Ypsi_N0 = YMpsi_J0[1,]
+          Mpsi_N0 = YMpsi_J0[2,]
           
           YMpsi_J1 = rmvn_cpp(J, rep(0,2), YMpsiPars1) # *sqrt(diag(YMpsiPars1)) # rbind(YpsiPars1,MpsiPars1)
-          Ypsi_N1 = YMpsi_J1[1,UindexTSBB]
-          Mpsi_N1 = YMpsi_J1[2,UindexTSBB]
+          Ypsi_N1 = YMpsi_J1[1,]
+          Mpsi_N1 = YMpsi_J1[2,]
           
           # Normal model for continuous M
           # draw M0_mc and M1_mc
-          Mhat_z0_mc = matX.testTSBB %*% MbetaPars0 + Mpsi_N0
-          Mhat_z1_mc = matX.testTSBB %*% MbetaPars1 + Mpsi_N1
-          # for (j in 1:J) {
-          #   whichUindex = which(UindexTSBB==j)
-          #   if(length(whichUindex)>0){
-          #     Mhat_z0_mc[whichUindex] = Mhat_z0_mc[whichUindex] + Mpsi_N0[j]
-          #     Mhat_z1_mc[whichUindex] = Mhat_z1_mc[whichUindex] + Mpsi_N1[j]
-          #   }
-          # }
+          Mhat_z0_mc = matX.testTSBB %*% MbetaPars0
+          Mhat_z1_mc = matX.testTSBB %*% MbetaPars1
+          for (j in 1:J) {
+            whichUindex = which(UindexTSBB==j)
+            if(length(whichUindex)>0){
+              Mhat_z0_mc[whichUindex] = Mhat_z0_mc[whichUindex] + Mpsi_N0[j]
+              Mhat_z1_mc[whichUindex] = Mhat_z1_mc[whichUindex] + Mpsi_N1[j]
+            }
+          }
+          
           M0_mc = rbinom(NJ, 1, callM(Mhat_z0_mc))
           M1_mc = rbinom(NJ, 1, callM(Mhat_z1_mc))
           
@@ -2137,21 +2160,22 @@ TSBBmediationPOSTsim = function(object, # object from predict(rBARTmediation)
           # draw Y_z0m0_mc, Y_z1m0_mc, Y_z1m1_mc
           matM_m0_mc = cbind(1, M0_mc, X.testTSBB)
           matM_m1_mc = cbind(1, M1_mc, X.testTSBB)
-          Yhat_z0m0_mc = c(matM_m0_mc %*% YbetaPars0) + Ypsi_N0
-          Yhat_z1m0_mc = c(matM_m0_mc %*% YbetaPars1) + Ypsi_N1
-          Yhat_z1m1_mc = c(matM_m1_mc %*% YbetaPars1) + Ypsi_N1
-          # for (j in 1:J) {
-          #   whichUindex = which(UindexTSBB==j)
-          #   if(length(whichUindex)>0){
-          #     Yhat_z0m0_mc[whichUindex] = Yhat_z0m0_mc[whichUindex] + Ypsi_N0[j]
-          #     Yhat_z1m0_mc[whichUindex] = Yhat_z1m0_mc[whichUindex] + Ypsi_N1[j]
-          #     Yhat_z1m1_mc[whichUindex] = Yhat_z1m1_mc[whichUindex] + Ypsi_N1[j]
-          #   }
-          # }
+          Yhat_z0m0_mc = c(matM_m0_mc %*% YbetaPars0)
+          Yhat_z1m0_mc = c(matM_m0_mc %*% YbetaPars1)
+          Yhat_z1m1_mc = c(matM_m1_mc %*% YbetaPars1)
+          for (j in 1:J) {
+            whichUindex = which(UindexTSBB==j)
+            if(length(whichUindex)>0){
+              Yhat_z0m0_mc[whichUindex] = Yhat_z0m0_mc[whichUindex] + Ypsi_N0[j]
+              Yhat_z1m0_mc[whichUindex] = Yhat_z1m0_mc[whichUindex] + Ypsi_N1[j]
+              Yhat_z1m1_mc[whichUindex] = Yhat_z1m1_mc[whichUindex] + Ypsi_N1[j]
+            }
+          }
           Yhat_z0m0_mc = rnorm(NJ, Yhat_z0m0_mc, YsigPars0)
           Yhat_z1m0_mc = rnorm(NJ, Yhat_z1m0_mc, YsigPars1)
           Yhat_z1m1_mc = rnorm(NJ, Yhat_z1m1_mc, YsigPars1)
           
+          # ------------------------------------------------------------------------------
           # Update parameters for individual-level confounder (pi: n_j X 1 matrix, j=1,...J)
           # Update parameters for link cluster-individual (omega: J X J matrix)
           # Update parameters for cluster-level confounder (rho: J X 1 vector)
@@ -2212,42 +2236,42 @@ TSBBmediationPOSTsim = function(object, # object from predict(rBARTmediation)
           
           # random-effects
           YMpsi_J0 = rmvn_cpp(J, rep(0,2), YMpsiPars0) # *sqrt(diag(YMpsiPars0)) # rbind(YpsiPars0,MpsiPars0)
-          Ypsi_N0 = YMpsi_J0[1,UindexTSBB]
-          Mpsi_N0 = YMpsi_J0[2,UindexTSBB]
+          Ypsi_N0 = YMpsi_J0[1,]
+          Mpsi_N0 = YMpsi_J0[2,]
           
           YMpsi_J1 = rmvn_cpp(J, rep(0,2), YMpsiPars1) # *sqrt(diag(YMpsiPars1)) # rbind(YpsiPars1,MpsiPars1)
-          Ypsi_N1 = YMpsi_J1[1,UindexTSBB]
-          Mpsi_N1 = YMpsi_J1[2,UindexTSBB]
+          Ypsi_N1 = YMpsi_J1[1,]
+          Mpsi_N1 = YMpsi_J1[2,]
           
           # Normal model for continuous M
           # draw M0_mc and M1_mc
-          Mhat_z0_mc = matX.testTSBB %*% MbetaPars0 + Mpsi_N0
-          Mhat_z1_mc = matX.testTSBB %*% MbetaPars1 + Mpsi_N1
-          # for (j in 1:J) {
-          #   whichUindex = which(UindexTSBB==j)
-          #   if(length(whichUindex)>0){
-          #     Mhat_z0_mc[whichUindex] = Mhat_z0_mc[whichUindex] + Mpsi_N0[j]
-          #     Mhat_z1_mc[whichUindex] = Mhat_z1_mc[whichUindex] + Mpsi_N1[j]
-          #   }
-          # }
-          M0_mc = rbinom(NJ, 1, pnorm(Mhat_z0_mc))
-          M1_mc = rbinom(NJ, 1, pnorm(Mhat_z1_mc))
+          Mhat_z0_mc = matX.testTSBB %*% MbetaPars0
+          Mhat_z1_mc = matX.testTSBB %*% MbetaPars1
+          for (j in 1:J) {
+            whichUindex = which(UindexTSBB==j)
+            if(length(whichUindex)>0){
+              Mhat_z0_mc[whichUindex] = Mhat_z0_mc[whichUindex] + Mpsi_N0[j]
+              Mhat_z1_mc[whichUindex] = Mhat_z1_mc[whichUindex] + Mpsi_N1[j]
+            }
+          }
+          M0_mc = rbinom(NJ, 1, callM(Mhat_z0_mc))
+          M1_mc = rbinom(NJ, 1, callM(Mhat_z1_mc))
           
           # Normal model for continuous Y
           # draw Y_z0m0_mc, Y_z1m0_mc, Y_z1m1_mc
           matM_m0_mc = cbind(1, M0_mc, X.testTSBB)
           matM_m1_mc = cbind(1, M1_mc, X.testTSBB)
-          Yhat_z0m0_mc = c(matM_m0_mc %*% YbetaPars0) + Ypsi_N0
-          Yhat_z1m0_mc = c(matM_m0_mc %*% YbetaPars1) + Ypsi_N1
-          Yhat_z1m1_mc = c(matM_m1_mc %*% YbetaPars1) + Ypsi_N1
-          # for (j in 1:J) {
-          #   whichUindex = which(UindexTSBB==j)
-          #   if(length(whichUindex)>0){
-          #     Yhat_z0m0_mc[whichUindex] = Yhat_z0m0_mc[whichUindex] + Ypsi_N0[j]
-          #     Yhat_z1m0_mc[whichUindex] = Yhat_z1m0_mc[whichUindex] + Ypsi_N1[j]
-          #     Yhat_z1m1_mc[whichUindex] = Yhat_z1m1_mc[whichUindex] + Ypsi_N1[j]
-          #   }
-          # }
+          Yhat_z0m0_mc = c(matM_m0_mc %*% YbetaPars0)
+          Yhat_z1m0_mc = c(matM_m0_mc %*% YbetaPars1)
+          Yhat_z1m1_mc = c(matM_m1_mc %*% YbetaPars1)
+          for (j in 1:J) {
+            whichUindex = which(UindexTSBB==j)
+            if(length(whichUindex)>0){
+              Yhat_z0m0_mc[whichUindex] = Yhat_z0m0_mc[whichUindex] + Ypsi_N0[j]
+              Yhat_z1m0_mc[whichUindex] = Yhat_z1m0_mc[whichUindex] + Ypsi_N1[j]
+              Yhat_z1m1_mc[whichUindex] = Yhat_z1m1_mc[whichUindex] + Ypsi_N1[j]
+            }
+          }
           Yhat_z0m0_mc = rbinom(NJ, 1, plogis(Yhat_z0m0_mc))
           Yhat_z1m0_mc = rbinom(NJ, 1, plogis(Yhat_z1m0_mc))
           Yhat_z1m1_mc = rbinom(NJ, 1, plogis(Yhat_z1m1_mc))
@@ -2386,9 +2410,12 @@ CcondTSBBmediationPOST = function(object, # object from rBARTmediation
   # Significance Level alpha
   level = 0.05
   
-  if (inherits(object,"rBARTmediation")) {
+  if (inherits(object$object0,"rBARTmediation")) {
     object0 = object$object0
     object1 = object$object1
+    Uindex0 = Uindex$Uindex0
+    Uindex1 = Uindex$Uindex1
+    Uindex = Uindex$Uindex
     
     N = nrow(C.test)
     J = length(unique(Uindex))
@@ -2488,11 +2515,7 @@ CcondTSBBmediationPOST = function(object, # object from rBARTmediation
         cat("Post-Processing",post_reps,"(",(post_reps/n_MCMC)*100,"%)","Time:",date(),"\n")
       }
     }
-  } else if (inherits(object,"rGLMmediation")) {
-    # 
-    z0 = 0
-    z1 = 1
-    
+  } else if (inherits(object0,"rGLMmediation")) {
     N = nrow(C.test)
     J = length(unique(Uindex))
     n_j = as.numeric(table(Uindex))
@@ -2520,8 +2543,8 @@ CcondTSBBmediationPOST = function(object, # object from rBARTmediation
     # Constants
     n_MCMC = object0$constants$n_MCMC
     
-    if (object$typeY == "continuous"){
-      if (object$typeM == "continuous") {
+    if (object0$typeY == "continuous"){
+      if (object0$typeM == "continuous") {
         # Define POST function for continuous Y and continuous M using TSBB
         # Distances
         # \lambda_{lj}^{\oemga} = \alpha_{l}^{\oemga} \dist_{lj}: adding additional "pseudosubjects
@@ -2557,7 +2580,7 @@ CcondTSBBmediationPOST = function(object, # object from rBARTmediation
           MsigPars  = sqrt(Msig2Pars)
           
           # random-effects
-          YMpsi_J = rmvn_cpp(J, rep(0,2), YMpsiPars) # *sqrt(diag(YMpsiPars)) # rbind(YpsiPars,MpsiPars)
+          YMpsi_J = rbind(YpsiPars,MpsiPars)*sqrt(diag(YMpsiPars)) # rmvn_cpp(J, rep(0,2), YMpsiPars)
           Ypsi_N = YMpsi_J[1,UindexTSBB] # rep(0, N)
           Mpsi_N = YMpsi_J[2,UindexTSBB] # rep(0, N)
           
@@ -2612,13 +2635,7 @@ CcondTSBBmediationPOST = function(object, # object from rBARTmediation
             cat("Post-Processing",post_reps,"(",(post_reps/n_MCMC)*100,"%)","Time:",date(),"\n")
           }
         }
-      } else if (object$typeM == "binary") {
-        if (object0$modelM == "probit") {
-          callM = pnorm
-        } else if (object0$modelM == "logit") {
-          callM = plogis
-        }
-        
+      } else if (object0$typeM == "binary") {
         # Define POST function for continuous Y and binary M using TSBB
         # Distances
         # \lambda_{lj}^{\oemga} = \alpha_{l}^{\oemga} \dist_{lj}: adding additional "pseudosubjects
@@ -2641,6 +2658,12 @@ CcondTSBBmediationPOST = function(object, # object from rBARTmediation
         E_Y_z0m0 = numeric(n_MCMC)
         E_Y_z1m0 = numeric(n_MCMC)
         E_Y_z1m1 = numeric(n_MCMC)
+        if (object$modelM == "probit") {
+          callM = pnorm
+        } else if (object$modelM == "logit") {
+          callM = plogis
+        }
+        
         for (post_reps in 1:n_MCMC) {
           # ------------------------------------------------------------------------------
           YbetaPars = object$MCMCposteriors$YbetaLists[[post_reps]]
@@ -2652,7 +2675,7 @@ CcondTSBBmediationPOST = function(object, # object from rBARTmediation
           YsigPars  = sqrt(Ysig2Pars)
           
           # random-effects
-          YMpsi_J = rmvn_cpp(J, rep(0,2), YMpsiPars) # *sqrt(diag(YMpsiPars)) # rbind(YpsiPars,MpsiPars)
+          YMpsi_J = rbind(YpsiPars,MpsiPars)*sqrt(diag(YMpsiPars)) # rmvn_cpp(J, rep(0,2), YMpsiPars)
           Ypsi_N = YMpsi_J[1,UindexTSBB] # rep(0, N)
           Mpsi_N = YMpsi_J[2,UindexTSBB] # rep(0, N)
           
@@ -2803,9 +2826,12 @@ VcondTSBBmediationPOST = function(object, # object from rBARTmediation
   # Significance Level alpha
   level = 0.05
   
-  if (inherits(object,"rBARTmediation")) {
+  if (inherits(object$object0,"rBARTmediation")) {
     object0 = object$object0
     object1 = object$object1
+    Uindex0 = Uindex$Uindex0
+    Uindex1 = Uindex$Uindex1
+    Uindex = Uindex$Uindex
     
     N = nrow(C.test)
     J = length(unique(Uindex))
@@ -2905,11 +2931,7 @@ VcondTSBBmediationPOST = function(object, # object from rBARTmediation
         cat("Post-Processing",post_reps,"(",(post_reps/n_MCMC)*100,"%)","Time:",date(),"\n")
       }
     }
-  } else if (inherits(object,"rGLMmediation")) {
-    # 
-    z0 = 0
-    z1 = 1
-    
+  } else if (inherits(object0,"rGLMmediation")) {
     N = nrow(C.test)
     J = length(unique(Uindex))
     n_j = as.numeric(table(Uindex))
@@ -2937,8 +2959,8 @@ VcondTSBBmediationPOST = function(object, # object from rBARTmediation
     # Constants
     n_MCMC = object0$constants$n_MCMC
     
-    if (object$typeY == "continuous"){
-      if (object$typeM == "continuous") {
+    if (object0$typeY == "continuous"){
+      if (object0$typeM == "continuous") {
         # Define POST function for continuous Y and continuous M using TSBB
         # Distances
         # \lambda_{lj}^{\oemga} = \alpha_{l}^{\oemga} \dist_{lj}: adding additional "pseudosubjects
@@ -2974,7 +2996,7 @@ VcondTSBBmediationPOST = function(object, # object from rBARTmediation
           MsigPars  = sqrt(Msig2Pars)
           
           # random-effects
-          YMpsi_J = rmvn_cpp(J, rep(0,2), YMpsiPars) # *sqrt(diag(YMpsiPars)) # rbind(YpsiPars,MpsiPars)
+          YMpsi_J = rbind(YpsiPars,MpsiPars)*sqrt(diag(YMpsiPars)) # rmvn_cpp(J, rep(0,2), YMpsiPars)
           Ypsi_N = YMpsi_J[1,UindexTSBB] # rep(0, N)
           Mpsi_N = YMpsi_J[2,UindexTSBB] # rep(0, N)
           
@@ -3029,13 +3051,7 @@ VcondTSBBmediationPOST = function(object, # object from rBARTmediation
             cat("Post-Processing",post_reps,"(",(post_reps/n_MCMC)*100,"%)","Time:",date(),"\n")
           }
         }
-      } else if (object$typeM == "binary") {
-        if (object0$modelM == "probit") {
-          callM = pnorm
-        } else if (object0$modelM == "logit") {
-          callM = plogis
-        }
-        
+      } else if (object0$typeM == "binary") {
         # Define POST function for continuous Y and binary M using TSBB
         # Distances
         # \lambda_{lj}^{\oemga} = \alpha_{l}^{\oemga} \dist_{lj}: adding additional "pseudosubjects
@@ -3058,6 +3074,12 @@ VcondTSBBmediationPOST = function(object, # object from rBARTmediation
         E_Y_z0m0 = numeric(n_MCMC)
         E_Y_z1m0 = numeric(n_MCMC)
         E_Y_z1m1 = numeric(n_MCMC)
+        if (object$modelM == "probit") {
+          callM = pnorm
+        } else if (object$modelM == "logit") {
+          callM = plogis
+        }
+        
         for (post_reps in 1:n_MCMC) {
           # ------------------------------------------------------------------------------
           YbetaPars = object$MCMCposteriors$YbetaLists[[post_reps]]
@@ -3069,7 +3091,7 @@ VcondTSBBmediationPOST = function(object, # object from rBARTmediation
           YsigPars  = sqrt(Ysig2Pars)
           
           # random-effects
-          YMpsi_J = rmvn_cpp(J, rep(0,2), YMpsiPars) # *sqrt(diag(YMpsiPars)) # rbind(YpsiPars,MpsiPars)
+          YMpsi_J = rbind(YpsiPars,MpsiPars)*sqrt(diag(YMpsiPars)) # rmvn_cpp(J, rep(0,2), YMpsiPars)
           Ypsi_N = YMpsi_J[1,UindexTSBB] # rep(0, N)
           Mpsi_N = YMpsi_J[2,UindexTSBB] # rep(0, N)
           
@@ -3198,7 +3220,7 @@ VcondTSBBmediationPOST = function(object, # object from rBARTmediation
 # -----------------------------------------------------------------------------
 # -----------------------------------------------------------------------------
 # Define MCMC function for continuous Y and continuous M
-GLMmediationMCMCconYconM = function(Y, M, Z, C, V, Uindex,
+GLMmediationMCMCconYconM = function(Y, M, C, V, Uindex,
                                     gibbs_iter = gibbs_iter, 
                                     gibbs_burnin = gibbs_burnin, 
                                     gibbs_thin = gibbs_thin){
@@ -3270,15 +3292,15 @@ GLMmediationMCMCconYconM = function(Y, M, Z, C, V, Uindex,
   model {
     // Priors for psi - cluster-level intercepts: mediator & outcome glm
     // hyper-priors
-    diagYMpsi ~ cauchy(0, 2); // , 5);
-    corrYMpsi ~ lkj_corr(2);
+    // diagYMpsi ~ cauchy(0, 5);
+    // corrYMpsi ~ lkj_corr(2);
     // priors
     Mpsi ~ std_normal();
     Ypsi ~ std_normal();
     // Mbeta ~ normal(0, 5);
-    // Msig2 ~ cauchy(0, 2); // , 5);
+    // Msig2 ~ cauchy(0, 5);
     // Ybeta ~ normal(0, 5);
-    // Ysig2 ~ cauchy(0, 2); // , 5);
+    // Ysig2 ~ cauchy(0, 5);
     
     // GLM likelihood
     vector[N] Mhat;
@@ -3370,7 +3392,7 @@ GLMmediationMCMCconYconM = function(Y, M, Z, C, V, Uindex,
 }
 
 # Define MCMC function for continuous Y and binary M
-GLMmediationMCMCconYbinM = function(Y, M, Z, C, V, Uindex,
+GLMmediationMCMCconYbinM = function(Y, M, C, V, Uindex,
                                     gibbs_iter = gibbs_iter, 
                                     gibbs_burnin = gibbs_burnin, 
                                     gibbs_thin = gibbs_thin,
@@ -3443,14 +3465,14 @@ GLMmediationMCMCconYbinM = function(Y, M, Z, C, V, Uindex,
     model {
       // Priors for psi - cluster-level intercepts: mediator & outcome glm
       // hyper-priors
-      diagYMpsi ~ cauchy(0, 2); // , 5);
-      corrYMpsi ~ lkj_corr(2);
+      // diagYMpsi ~ cauchy(0, 5);
+      // corrYMpsi ~ lkj_corr(2);
       // priors
       Mpsi ~ std_normal();
       Ypsi ~ std_normal();
       // Mbeta ~ normal(0, 5);
       // Ybeta ~ normal(0, 5);
-      // Ysig2 ~ cauchy(0, 2); // , 5);
+      // Ysig2 ~ cauchy(0, 5);
       
       // GLM likelihood
       vector[N] Mhat;
@@ -3494,14 +3516,14 @@ GLMmediationMCMCconYbinM = function(Y, M, Z, C, V, Uindex,
     model {
       // Priors for psi - cluster-level intercepts: mediator & outcome glm
       // hyper-priors
-      diagYMpsi ~ cauchy(0, 2); // , 5);
-      corrYMpsi ~ lkj_corr(2);
+      // diagYMpsi ~ cauchy(0, 5);
+      // corrYMpsi ~ lkj_corr(2);
       // priors
       Mpsi ~ std_normal();
       Ypsi ~ std_normal();
       // Mbeta ~ normal(0, 5);
       // Ybeta ~ normal(0, 5);
-      // Ysig2 ~ cauchy(0, 2); // , 5);
+      // Ysig2 ~ cauchy(0, 5);
       
       // GLM likelihood
       vector[N] Mhat;
@@ -3599,7 +3621,7 @@ GLMmediationMCMCconYbinM = function(Y, M, Z, C, V, Uindex,
 }
 
 # Define MCMC function for binary Y and binary M
-GLMmediationMCMCbinYbinM = function(Y, M, Z, C, V, Uindex,
+GLMmediationMCMCbinYbinM = function(Y, M, C, V, Uindex,
                                     gibbs_iter = gibbs_iter, 
                                     gibbs_burnin = gibbs_burnin, 
                                     gibbs_thin = gibbs_thin){
@@ -3669,8 +3691,8 @@ GLMmediationMCMCbinYbinM = function(Y, M, Z, C, V, Uindex,
     model {
       // Priors for psi - cluster-level intercepts: mediator & outcome glm
       // hyper-priors
-      diagYMpsi ~ cauchy(0, 2); // , 5);
-      corrYMpsi ~ lkj_corr(2);
+      // diagYMpsi ~ cauchy(0, 5);
+      // corrYMpsi ~ lkj_corr(2);
       // priors
       Mpsi ~ std_normal();
       Ypsi ~ std_normal();
@@ -3808,40 +3830,39 @@ GLMmediation = function(Y, M, Z, C, V, Uindex,
   
   if (typeY == "continuous") {
     if (typeM == "continuous") {
-      object0 = GLMmediationMCMCconYconM(Y0, M0, Z0, C0, V0, Uindex0,
-                                         gibbs_iter, 
-                                         gibbs_burnin, 
-                                         gibbs_thin)
-      object1 = GLMmediationMCMCconYconM(Y1, M1, Z1, C1, V1, Uindex1,
-                                         gibbs_iter, 
-                                         gibbs_burnin, 
-                                         gibbs_thin)
-    } else if (typeM == "binary") {
-      object0 = GLMmediationMCMCconYbinM(Y0, M0, Z0, C0, V0, Uindex0,
-                                         gibbs_iter = gibbs_iter, 
-                                         gibbs_burnin = gibbs_burnin, 
-                                         gibbs_thin = gibbs_thin,
-                                         modelM = modelM)
-      object1 = GLMmediationMCMCconYbinM(Y1, M1, Z1, C1, V1, Uindex1,
-                                         gibbs_iter = gibbs_iter, 
-                                         gibbs_burnin = gibbs_burnin, 
-                                         gibbs_thin = gibbs_thin,
-                                         modelM = modelM)
-    } else if (typeM == "ordinal") {
-      object0 = GLMmediationMCMCconYordM(Y0, M0, Z0, C0, V0, Uindex0,
+      object0 = GLMmediationMCMCconYconM(Y0, M0, C0, V0, Uindex0,
                                          gibbs_iter = gibbs_iter, 
                                          gibbs_burnin = gibbs_burnin, 
                                          gibbs_thin = gibbs_thin)
-      object1 = GLMmediationMCMCconYordM(Y1, M1, Z1, C1, V1, Uindex1,
+      object1 = GLMmediationMCMCconYconM(Y1, M1, C1, V1, Uindex1,
+                                         gibbs_iter = gibbs_iter, 
+                                         gibbs_burnin = gibbs_burnin, 
+                                         gibbs_thin = gibbs_thin)
+    } else if (typeM == "binary") {
+      object0 = GLMmediationMCMCconYbinM(Y0, M0, C0, V0, Uindex0,
+                                         gibbs_iter = gibbs_iter, 
+                                         gibbs_burnin = gibbs_burnin, 
+                                         gibbs_thin = gibbs_thin,
+                                         modelM = modelM)
+      object1 = GLMmediationMCMCconYbinM(Y1, M1, C1, V1, Uindex1,
+                                         gibbs_iter = gibbs_iter, 
+                                         gibbs_burnin = gibbs_burnin, 
+                                         gibbs_thin = gibbs_thin)
+    } else if (typeM == "ordinal") {
+      object0 = GLMmediationMCMCconYordM(Y0, M0, C0, V0, Uindex0,
+                                         gibbs_iter = gibbs_iter, 
+                                         gibbs_burnin = gibbs_burnin, 
+                                         gibbs_thin = gibbs_thin)
+      object1 = GLMmediationMCMCconYordM(Y1, M1, C1, V1, Uindex1,
                                          gibbs_iter = gibbs_iter, 
                                          gibbs_burnin = gibbs_burnin, 
                                          gibbs_thin = gibbs_thin)
     } else if (typeM == "count") {
-      object0 = GLMmediationMCMCconYcouM(Y0, M0, Z0, C0, V0, Uindex0,
+      object0 = GLMmediationMCMCconYcouM(Y0, M0, C0, V0, Uindex0,
                                          gibbs_iter = gibbs_iter, 
                                          gibbs_burnin = gibbs_burnin, 
                                          gibbs_thin = gibbs_thin)
-      object1 = GLMmediationMCMCconYcouM(Y1, M1, Z1, C1, V1, Uindex1,
+      object1 = GLMmediationMCMCconYcouM(Y1, M1, C1, V1, Uindex1,
                                          gibbs_iter = gibbs_iter, 
                                          gibbs_burnin = gibbs_burnin, 
                                          gibbs_thin = gibbs_thin)
@@ -3850,11 +3871,11 @@ GLMmediation = function(Y, M, Z, C, V, Uindex,
     if (typeM == "continuous") {
       # 
     } else if (typeM == "binary") {
-      object0 = GLMmediationMCMCbinYbinM(Y0, M0, Z0, C0, V0, Uindex0,
+      object0 = GLMmediationMCMCbinYbinM(Y0, M0, C0, V0, Uindex0,
                                          gibbs_iter = gibbs_iter, 
                                          gibbs_burnin = gibbs_burnin, 
                                          gibbs_thin = gibbs_thin)
-      object1 = GLMmediationMCMCbinYbinM(Y1, M1, Z1, C1, V1, Uindex1,
+      object1 = GLMmediationMCMCbinYbinM(Y1, M1, C1, V1, Uindex1,
                                          gibbs_iter = gibbs_iter, 
                                          gibbs_burnin = gibbs_burnin, 
                                          gibbs_thin = gibbs_thin)
@@ -3864,16 +3885,13 @@ GLMmediation = function(Y, M, Z, C, V, Uindex,
       # 
     }
   }
-  # else if (typeY == "ordinal") ㄴ{
+  # else if (typeY == "ordinal") {
   #   
   # } else if (typeY == "count") {
   #   
   # }
   
-  object = list(object0 = object0, object1 = object1)
-  class(object) = "rGLMmediation"
-  
-  return(object)
+  return(list(object0 = object0, object1 = object1))
 }
 
 # -----------------------------------------------------------------------------

@@ -275,9 +275,9 @@ set.seed(run_ID)
   df = data.frame(Y = Y, M = M, Z = Z, C = C, V = V, Uindex = Uindex, matX = matX, matM = matM)
 }
 
-gibbs_thin = 1e2
+gibbs_thin = 1e0
 gibbs_iter = 2e2
-gibbs_burnin = 2e4
+gibbs_burnin = 2e2
 
 # sparse = TRUE
 sparse = FALSE
@@ -454,7 +454,7 @@ GLMresultHBBmediationPOST = HBBmediationPOST(GLMfit, C, V, Uindex, esttype, save
 (GLMHBBtableATE = GLMresultHBBmediationPOST$ATE_result_mc)
 
 # # TSBB
-# GLMresultTSBBmediationPOST = TSBBmediationPOST(GLMfit, C, V, Uindex, esttype, saveall, chi = 1, zeta = 0.5, F)
+# GLMresultTSBBmediationPOST = TSBBmediationPOST(GLMfit, C, V, Uindex, esttype, saveall, chi = 1, zeta = 0.5, T)
 # (GLMTSBBtableNIE = GLMresultTSBBmediationPOST$NIE_result_mc)
 # (GLMTSBBtableNDE = GLMresultTSBBmediationPOST$NDE_result_mc)
 # (GLMTSBBtableATE = GLMresultTSBBmediationPOST$ATE_result_mc)
