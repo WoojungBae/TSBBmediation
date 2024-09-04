@@ -580,11 +580,11 @@ BBmediationPOST = function(object,  # object from rBARTmediation
       #   M0_mc = rnorm(N, Mhat_z0_mc, MsigPars)
       #   M1_mc = rnorm(N, Mhat_z1_mc, MsigPars)
       # } else if (object$typeM == "binary") {
-      #   if (object0$modelM == "probit") {
-      #     callM = pnorm
-      #   } else if (object0$modelM == "logit") {
-      #     callM = plogis
-      #   }
+      # if (is.null(object0$modelM)) {
+      #   callM = plogis
+      # } else {
+      #   callM = pnorm
+      # }
       #   M0_mc = rbinom(N,1, callM(Mhat_z0_mc))
       #   M1_mc = rbinom(N,1, callM(Mhat_z1_mc))
       # }
@@ -627,7 +627,7 @@ BBmediationPOST = function(object,  # object from rBARTmediation
       # MpsiPars1  = object1$MCMCposteriors$MpsiLists[[post_reps]]
       YMpsiPars1 = object1$MCMCposteriors$YMpsiLists[[post_reps]]
       covYMpsiPars1 = object1$MCMCposteriors$covYMpsiLists[[post_reps]]
-
+      
       # random-effects
       YMpsi_J0 = rmvn_cpp(J, rep(0,2), covYMpsiPars0) # * sqrt(diag(YMpsiPars0)) # rbind(YpsiPars0,MpsiPars0)
       Ypsi_N0 = YMpsi_J0[1,Uindex]
@@ -641,22 +641,22 @@ BBmediationPOST = function(object,  # object from rBARTmediation
       # draw M0_mc and M1_mc
       Mhat_z0_mc = matX.test %*% MbetaPars0 + Mpsi_N0
       Mhat_z1_mc = matX.test %*% MbetaPars1 + Mpsi_N1
-
+      
       if (object0$typeM == "continuous") {
         MsigPars0  = sqrt(Msig2Pars0)
         MsigPars1  = sqrt(Msig2Pars1)
         M0_mc = rnorm(N, Mhat_z0_mc, MsigPars0)
         M1_mc = rnorm(N, Mhat_z1_mc, MsigPars1)
       } else if (object0$typeM == "binary") {
-        if (object0$modelM == "probit") {
-          callM = pnorm
-        } else if (object0$modelM == "logit") {
+        if (is.null(object0$modelM)) {
           callM = plogis
+        } else {
+          callM = pnorm
         }
         M0_mc = rbinom(N,1, callM(Mhat_z0_mc))
         M1_mc = rbinom(N,1, callM(Mhat_z1_mc))
       }
-
+      
       # Normal model for continuous Y
       # draw Y_z0m0_mc, Y_z1m0_mc, Y_z1m1_mc
       matM_m0_mc = cbind(1, M0_mc, X.test)
@@ -664,7 +664,7 @@ BBmediationPOST = function(object,  # object from rBARTmediation
       Yhat_z0m0_mc = c(matM_m0_mc %*% YbetaPars0)
       Yhat_z1m0_mc = c(matM_m0_mc %*% YbetaPars1)
       Yhat_z1m1_mc = c(matM_m1_mc %*% YbetaPars1)
-
+      
       if (object0$typeY == "continuous") {
         YsigPars0 = sqrt(Ysig2Pars0)
         YsigPars1 = sqrt(Ysig2Pars1)
@@ -905,11 +905,11 @@ HBBmediationPOST = function(object, # object from predict(rBARTmediation)
       #   M0_mc = rnorm(N, Mhat_z0_mc, MsigPars)
       #   M1_mc = rnorm(N, Mhat_z1_mc, MsigPars)
       # } else if (object$typeM == "binary") {
-      #   if (object0$modelM == "probit") {
-      #     callM = pnorm
-      #   } else if (object0$modelM == "logit") {
-      #     callM = plogis
-      #   }
+      # if (is.null(object0$modelM)) {
+      #   callM = plogis
+      # } else {
+      #   callM = pnorm
+      # }
       #   M0_mc = rbinom(N,1, callM(Mhat_z0_mc))
       #   M1_mc = rbinom(N,1, callM(Mhat_z1_mc))
       # }
@@ -943,7 +943,16 @@ HBBmediationPOST = function(object, # object from predict(rBARTmediation)
       # MpsiPars0  = object0$MCMCposteriors$MpsiLists[[post_reps]]
       YMpsiPars0 = object0$MCMCposteriors$YMpsiLists[[post_reps]]
       covYMpsiPars0 = object0$MCMCposteriors$covYMpsiLists[[post_reps]]
-
+      
+      YbetaPars1 = object1$MCMCposteriors$YbetaLists[[post_reps]]
+      Ysig2Pars1 = object1$MCMCposteriors$Ysig2Lists[[post_reps]]
+      # YpsiPars1  = object1$MCMCposteriors$YpsiLists[[post_reps]]
+      MbetaPars1 = object1$MCMCposteriors$MbetaLists[[post_reps]]
+      Msig2Pars1 = object1$MCMCposteriors$Msig2Lists[[post_reps]]
+      # MpsiPars1  = object1$MCMCposteriors$MpsiLists[[post_reps]]
+      YMpsiPars1 = object1$MCMCposteriors$YMpsiLists[[post_reps]]
+      covYMpsiPars1 = object1$MCMCposteriors$covYMpsiLists[[post_reps]]
+      
       # random-effects
       YMpsi_J0 = rmvn_cpp(J, rep(0,2), covYMpsiPars0) # * sqrt(diag(YMpsiPars0)) # rbind(YpsiPars0,MpsiPars0)
       Ypsi_N0 = YMpsi_J0[1,Uindex]
@@ -952,27 +961,27 @@ HBBmediationPOST = function(object, # object from predict(rBARTmediation)
       YMpsi_J1 = rmvn_cpp(J, rep(0,2), covYMpsiPars1) # * sqrt(diag(YMpsiPars1)) # rbind(YpsiPars1,MpsiPars1)
       Ypsi_N1 = YMpsi_J1[1,Uindex]
       Mpsi_N1 = YMpsi_J1[2,Uindex]
-
+      
       # Normal model for continuous M
       # draw M0_mc and M1_mc
       Mhat_z0_mc = matX.test %*% MbetaPars0 + Mpsi_N0
       Mhat_z1_mc = matX.test %*% MbetaPars1 + Mpsi_N1
-
+      
       if (object0$typeM == "continuous") {
         MsigPars0  = sqrt(Msig2Pars0)
         MsigPars1  = sqrt(Msig2Pars1)
         M0_mc = rnorm(N, Mhat_z0_mc, MsigPars0)
         M1_mc = rnorm(N, Mhat_z1_mc, MsigPars1)
       } else if (object0$typeM == "binary") {
-        if (object0$modelM == "probit") {
-          callM = pnorm
-        } else if (object0$modelM == "logit") {
+        if (is.null(object0$modelM)) {
           callM = plogis
+        } else {
+          callM = pnorm
         }
         M0_mc = rbinom(N,1, callM(Mhat_z0_mc))
         M1_mc = rbinom(N,1, callM(Mhat_z1_mc))
       }
-
+      
       # Normal model for continuous Y
       # draw Y_z0m0_mc, Y_z1m0_mc, Y_z1m1_mc
       matM_m0_mc = cbind(1, M0_mc, X.test)
@@ -980,7 +989,7 @@ HBBmediationPOST = function(object, # object from predict(rBARTmediation)
       Yhat_z0m0_mc = c(matM_m0_mc %*% YbetaPars0)
       Yhat_z1m0_mc = c(matM_m0_mc %*% YbetaPars1)
       Yhat_z1m1_mc = c(matM_m1_mc %*% YbetaPars1)
-
+      
       if (object0$typeY == "continuous") {
         YsigPars0 = sqrt(Ysig2Pars0)
         YsigPars1 = sqrt(Ysig2Pars1)
@@ -992,7 +1001,7 @@ HBBmediationPOST = function(object, # object from predict(rBARTmediation)
         Yhat_z1m0_mc = rbinom(N, 1, plogis(Yhat_z1m0_mc))
         Yhat_z1m1_mc = rbinom(N, 1, plogis(Yhat_z1m1_mc))
       }
-
+      
       # -----------------------------------------------------------------------------
       # Update culster-level confounders parameters
       # Update individual-level confounders parameters
@@ -1249,11 +1258,11 @@ TSBBmediationPOST = function(object, # object from predict(rBARTmediation)
       #   M0_mc = rnorm(NJ, Mhat_z0_mc, MsigPars)
       #   M1_mc = rnorm(NJ, Mhat_z1_mc, MsigPars)
       # } else if (object$typeM == "binary") {
-      #   if (object0$modelM == "probit") {
-      #     callM = pnorm
-      #   } else if (object0$modelM == "logit") {
-      #     callM = plogis
-      #   }
+      # if (is.null(object0$modelM)) {
+      #   callM = plogis
+      # } else {
+      #   callM = pnorm
+      # }
       #   M0_mc = rbinom(NJ,1, callM(Mhat_z0_mc))
       #   M1_mc = rbinom(NJ,1, callM(Mhat_z1_mc))
       # }
@@ -1296,12 +1305,12 @@ TSBBmediationPOST = function(object, # object from predict(rBARTmediation)
       # MpsiPars1  = object1$MCMCposteriors$MpsiLists[[post_reps]]
       YMpsiPars1 = object1$MCMCposteriors$YMpsiLists[[post_reps]]
       covYMpsiPars1 = object1$MCMCposteriors$covYMpsiLists[[post_reps]]
-
+      
       # random-effects
       YMpsi_J0 = rmvn_cpp(J, rep(0,2), covYMpsiPars0) # * sqrt(diag(YMpsiPars0)) # rbind(YpsiPars0,MpsiPars0)
       Ypsi_N0 = YMpsi_J0[1,UindexTSBB]
       Mpsi_N0 = YMpsi_J0[2,UindexTSBB]
-
+      
       YMpsi_J1 = rmvn_cpp(J, rep(0,2), covYMpsiPars1) # * sqrt(diag(YMpsiPars1)) # rbind(YpsiPars1,MpsiPars1)
       Ypsi_N1 = YMpsi_J1[1,UindexTSBB]
       Mpsi_N1 = YMpsi_J1[2,UindexTSBB]
@@ -1310,22 +1319,22 @@ TSBBmediationPOST = function(object, # object from predict(rBARTmediation)
       # draw M0_mc and M1_mc
       Mhat_z0_mc = matX.testTSBB %*% MbetaPars0 + Mpsi_N0
       Mhat_z1_mc = matX.testTSBB %*% MbetaPars1 + Mpsi_N1
-
+      
       if (object0$typeM == "continuous") {
         MsigPars0  = sqrt(Msig2Pars0)
         MsigPars1  = sqrt(Msig2Pars1)
         M0_mc = rnorm(NJ, Mhat_z0_mc, MsigPars0)
         M1_mc = rnorm(NJ, Mhat_z1_mc, MsigPars1)
       } else if (object0$typeM == "binary") {
-        if (object0$modelM == "probit") {
-          callM = pnorm
-        } else if (object0$modelM == "logit") {
+        if (is.null(object0$modelM)) {
           callM = plogis
+        } else {
+          callM = pnorm
         }
         M0_mc = rbinom(NJ,1, callM(Mhat_z0_mc))
         M1_mc = rbinom(NJ,1, callM(Mhat_z1_mc))
       }
-
+      
       # Normal model for continuous Y
       # draw Y_z0m0_mc, Y_z1m0_mc, Y_z1m1_mc
       matM_m0_mc = cbind(1, M0_mc, X.testTSBB)
@@ -1333,7 +1342,7 @@ TSBBmediationPOST = function(object, # object from predict(rBARTmediation)
       Yhat_z0m0_mc = c(matM_m0_mc %*% YbetaPars0)
       Yhat_z1m0_mc = c(matM_m0_mc %*% YbetaPars1)
       Yhat_z1m1_mc = c(matM_m1_mc %*% YbetaPars1)
-
+      
       if (object0$typeY == "continuous") {
         YsigPars0 = sqrt(Ysig2Pars0)
         YsigPars1 = sqrt(Ysig2Pars1)
@@ -1638,11 +1647,11 @@ TSBBmediationPOSTsim = function(object, # object from predict(rBARTmediation)
       #   M0_mc = rnorm(NJ, Mhat_z0_mc, MsigPars)
       #   M1_mc = rnorm(NJ, Mhat_z1_mc, MsigPars)
       # } else if (object$typeM == "binary") {
-      #   if (object0$modelM == "probit") {
-      #     callM = pnorm
-      #   } else if (object0$modelM == "logit") {
-      #     callM = plogis
-      #   }
+      # if (is.null(object0$modelM)) {
+      #   callM = plogis
+      # } else {
+      #   callM = pnorm
+      # }
       #   M0_mc = rbinom(NJ,1, callM(Mhat_z0_mc))
       #   M1_mc = rbinom(NJ,1, callM(Mhat_z1_mc))
       # }
@@ -1694,27 +1703,27 @@ TSBBmediationPOSTsim = function(object, # object from predict(rBARTmediation)
       YMpsi_J1 = rmvn_cpp(J, rep(0,2), covYMpsiPars1) # * sqrt(diag(YMpsiPars1)) # rbind(YpsiPars1,MpsiPars1)
       Ypsi_N1 = YMpsi_J1[1,UindexTSBB]
       Mpsi_N1 = YMpsi_J1[2,UindexTSBB]
-
+      
       # Normal model for continuous M
       # draw M0_mc and M1_mc
       Mhat_z0_mc = matX.testTSBB %*% MbetaPars0 + Mpsi_N0
       Mhat_z1_mc = matX.testTSBB %*% MbetaPars1 + Mpsi_N1
-
+      
       if (object0$typeM == "continuous") {
         MsigPars0  = sqrt(Msig2Pars0)
         MsigPars1  = sqrt(Msig2Pars1)
         M0_mc = rnorm(NJ, Mhat_z0_mc, MsigPars0)
         M1_mc = rnorm(NJ, Mhat_z1_mc, MsigPars1)
       } else if (object0$typeM == "binary") {
-        if (object0$modelM == "probit") {
-          callM = pnorm
-        } else if (object0$modelM == "logit") {
+        if (is.null(object0$modelM)) {
           callM = plogis
+        } else {
+          callM = pnorm
         }
         M0_mc = rbinom(NJ,1, callM(Mhat_z0_mc))
         M1_mc = rbinom(NJ,1, callM(Mhat_z1_mc))
       }
-
+      
       # Normal model for continuous Y
       # draw Y_z0m0_mc, Y_z1m0_mc, Y_z1m1_mc
       matM_m0_mc = cbind(1, M0_mc, X.testTSBB)
@@ -1722,7 +1731,7 @@ TSBBmediationPOSTsim = function(object, # object from predict(rBARTmediation)
       Yhat_z0m0_mc = c(matM_m0_mc %*% YbetaPars0)
       Yhat_z1m0_mc = c(matM_m0_mc %*% YbetaPars1)
       Yhat_z1m1_mc = c(matM_m1_mc %*% YbetaPars1)
-
+      
       if (object0$typeY == "continuous") {
         YsigPars0 = sqrt(Ysig2Pars0)
         YsigPars1 = sqrt(Ysig2Pars1)
@@ -2097,10 +2106,10 @@ CcondTSBBmediationPOST = function(object, # object from rBARTmediation
           }
         }
       } else if (object$typeM == "binary") {
-        if (object0$modelM == "probit") {
-          callM = pnorm
-        } else if (object0$modelM == "logit") {
+        if (is.null(object0$modelM)) {
           callM = plogis
+        } else {
+          callM = pnorm
         }
         
         # Define POST function for continuous Y and binary M using TSBB
@@ -2517,10 +2526,10 @@ VcondTSBBmediationPOST = function(object, # object from rBARTmediation
           }
         }
       } else if (object$typeM == "binary") {
-        if (object0$modelM == "probit") {
-          callM = pnorm
-        } else if (object0$modelM == "logit") {
+        if (is.null(object0$modelM)) {
           callM = plogis
+        } else {
+          callM = pnorm
         }
         
         # Define POST function for continuous Y and binary M using TSBB
@@ -3406,6 +3415,7 @@ GLMmediation = function(Y, M, Z, C, V, Uindex,
   # }
   
   object = list(object0 = object0, object1 = object1)
+  object$modelM = modelM
   class(object) = "rGLMmediation"
   
   return(object)

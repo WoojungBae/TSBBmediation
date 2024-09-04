@@ -32,7 +32,7 @@ sourceCpp("TSBBmediation_source_cpp.cpp")
 # -----------------------------------------------------------------------------
 # -----------------------------------------------------------------------------
 # Scenario
-Scenario = 7
+Scenario = 1
 run_ID = 1
 set.seed(run_ID)
 
@@ -340,9 +340,9 @@ set.seed(run_ID)
   # df1 = data.frame(Y = Y1, M = M1, Z = Z1, C = C1, V = V1, Uindex = Uindex1, matX = matX1, matM = matM1)
 }
 
-gibbs_thin = 1e1
-gibbs_iter = 2e2
-gibbs_burnin = 2e3
+gibbs_thin = 1e0
+gibbs_iter = 2e1
+gibbs_burnin = 2e2
 
 # gibbs_thin = 1e1
 # gibbs_iter = 2e2
@@ -476,8 +476,9 @@ c(E_true[1]-E_true[2],E_true[2]-E_true[3],E_true[1]-E_true[3])
 # (dbartTSBBtableATErbart = dbartresultTSBBmediationPOSTrbart$ATE_result_mc)
 # c(E_true[1]-E_true[2],E_true[2]-E_true[3],E_true[1]-E_true[3])
 
+source("TSBBmediation_source_r.R")
 # source("TSBBmediation_source_r_includeZ.R")
-source("TSBBmediation_source_r_excludeZ.R")
+# source("TSBBmediation_source_r_excludeZ.R")
 # -----------------------------------------------------------------------------
 # -----------------------------------------------------------------------------
 # GLM
