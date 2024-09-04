@@ -1,4 +1,4 @@
-# -----------------------------------------------------------------------------
+ # -----------------------------------------------------------------------------
 # -----------------------------------------------------------------------------
 # -----------------------------------------------------------------------------
 # Load R packages
@@ -341,8 +341,8 @@ set.seed(run_ID)
 }
 
 gibbs_thin = 1e1
-gibbs_iter = 2e3
-gibbs_burnin = 2e4
+gibbs_iter = 2e2
+gibbs_burnin = 2e3
 
 # gibbs_thin = 1e1
 # gibbs_iter = 2e2
@@ -381,6 +381,7 @@ BARTfit1 = rBARTmediation(Y1, M1, C1, V1, Uindex1,
                           ntree=ntree, sparse = sparse)
 
 BARTfit = list(object0 = BARTfit0, object1 = BARTfit1)
+class(BARTfit) = "rBARTmediation"
 
 # BB-BB
 rBARTmediationresultBBmediationPOST = BBmediationPOST(BARTfit, C, V, Uindex, esttype, saveall, T)
@@ -475,6 +476,8 @@ c(E_true[1]-E_true[2],E_true[2]-E_true[3],E_true[1]-E_true[3])
 # (dbartTSBBtableATErbart = dbartresultTSBBmediationPOSTrbart$ATE_result_mc)
 # c(E_true[1]-E_true[2],E_true[2]-E_true[3],E_true[1]-E_true[3])
 
+# source("TSBBmediation_source_r_includeZ.R")
+source("TSBBmediation_source_r_excludeZ.R")
 # -----------------------------------------------------------------------------
 # -----------------------------------------------------------------------------
 # GLM
@@ -495,12 +498,12 @@ GLMresultHBBmediationPOST = HBBmediationPOST(GLMfit, C, V, Uindex, esttype, save
 (GLMHBBtableNDE = GLMresultHBBmediationPOST$NDE_result_mc)
 (GLMHBBtableATE = GLMresultHBBmediationPOST$ATE_result_mc)
 
-# TSBB
-GLMresultTSBBmediationPOST = TSBBmediationPOST(GLMfit, C, V, Uindex, esttype, saveall, chi = 1, zeta = 0.5, T)
-(GLMTSBBtableNIE = GLMresultTSBBmediationPOST$NIE_result_mc)
-(GLMTSBBtableNDE = GLMresultTSBBmediationPOST$NDE_result_mc)
-(GLMTSBBtableATE = GLMresultTSBBmediationPOST$ATE_result_mc)
-c(E_true[1]-E_true[2],E_true[2]-E_true[3],E_true[1]-E_true[3])
+# # TSBB
+# GLMresultTSBBmediationPOST = TSBBmediationPOST(GLMfit, C, V, Uindex, esttype, saveall, chi = 1, zeta = 0.5, T)
+# (GLMTSBBtableNIE = GLMresultTSBBmediationPOST$NIE_result_mc)
+# (GLMTSBBtableNDE = GLMresultTSBBmediationPOST$NDE_result_mc)
+# (GLMTSBBtableATE = GLMresultTSBBmediationPOST$ATE_result_mc)
+# c(E_true[1]-E_true[2],E_true[2]-E_true[3],E_true[1]-E_true[3])
 
 GLMresultTSBBmediationPOSTsim = TSBBmediationPOSTsim(GLMfit, C, V, Uindex, esttype, saveall,
                                                      list_chi = c(1e-2, 1e-1, 1, 1e1, 1e2),
