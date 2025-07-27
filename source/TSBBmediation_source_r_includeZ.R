@@ -456,7 +456,7 @@ BBmediationPOST = function(object,  # object from rBARTmediation
                            saveall = FALSE,
                            CE = TRUE){
   # object = GLMfit
-  # object = BARTfit
+  # # object = BARTfit
   # C.test = C
   # V.test = V
   # Uindex = Uindex
@@ -558,14 +558,15 @@ BBmediationPOST = function(object,  # object from rBARTmediation
       # ------------------------------------------------------------------------------
       YbetaPars = object$MCMCposteriors$YbetaLists[[post_reps]]
       Ysig2Pars = object$MCMCposteriors$Ysig2Lists[[post_reps]]
-      YpsiPars  = object$MCMCposteriors$YpsiLists[[post_reps]]
+      # YpsiPars  = object$MCMCposteriors$YpsiLists[[post_reps]]
       MbetaPars = object$MCMCposteriors$MbetaLists[[post_reps]]
       Msig2Pars = object$MCMCposteriors$Msig2Lists[[post_reps]]
-      MpsiPars  = object$MCMCposteriors$MpsiLists[[post_reps]]
-      YMpsiPars = object$MCMCposteriors$YMpsiLists[[post_reps]]
+      # MpsiPars  = object$MCMCposteriors$MpsiLists[[post_reps]]
+      # YMpsiPars = object$MCMCposteriors$YMpsiLists[[post_reps]]
+      covYMpsiPars = object$MCMCposteriors$covYMpsiLists[[post_reps]]
       
       # random-effects
-      YMpsi_J = rmvn_cpp(J, rep(0,2), cbind(c(1,0),c(0,1))) * sqrt(diag(YMpsiPars)) # rbind(YpsiPars,MpsiPars)
+      YMpsi_J = rmvn_cpp(J, rep(0,2), covYMpsiPars) # *sqrt(diag(YMpsiPars)) # rbind(YpsiPars,MpsiPars)
       Ypsi_N = YMpsi_J[1,Uindex] # rep(0, N)
       Mpsi_N = YMpsi_J[2,Uindex] # rep(0, N)
       
@@ -580,10 +581,10 @@ BBmediationPOST = function(object,  # object from rBARTmediation
         M0_mc = rnorm(N, Mhat_z0_mc, MsigPars)
         M1_mc = rnorm(N, Mhat_z1_mc, MsigPars)
       } else if (object$typeM == "binary") {
-        if (object0$modelM == "probit") {
-          callM = pnorm
-        } else if (object0$modelM == "logit") {
+        if (is.null(object$modelM)) {
           callM = plogis
+        } else {
+          callM = pnorm
         }
         M0_mc = rbinom(N,1, callM(Mhat_z0_mc))
         M1_mc = rbinom(N,1, callM(Mhat_z1_mc))
@@ -612,26 +613,28 @@ BBmediationPOST = function(object,  # object from rBARTmediation
       # # -----------------------------------------------------------------------------
       # YbetaPars0 = object0$MCMCposteriors$YbetaLists[[post_reps]]
       # Ysig2Pars0 = object0$MCMCposteriors$Ysig2Lists[[post_reps]]
-      # YpsiPars0  = object0$MCMCposteriors$YpsiLists[[post_reps]]
+      # # YpsiPars0  = object0$MCMCposteriors$YpsiLists[[post_reps]]
       # MbetaPars0 = object0$MCMCposteriors$MbetaLists[[post_reps]]
       # Msig2Pars0 = object0$MCMCposteriors$Msig2Lists[[post_reps]]
-      # MpsiPars0  = object0$MCMCposteriors$MpsiLists[[post_reps]]
+      # # MpsiPars0  = object0$MCMCposteriors$MpsiLists[[post_reps]]
       # YMpsiPars0 = object0$MCMCposteriors$YMpsiLists[[post_reps]]
+      # covYMpsiPars0 = object0$MCMCposteriors$covYMpsiLists[[post_reps]]
       # 
       # YbetaPars1 = object1$MCMCposteriors$YbetaLists[[post_reps]]
       # Ysig2Pars1 = object1$MCMCposteriors$Ysig2Lists[[post_reps]]
-      # YpsiPars1  = object1$MCMCposteriors$YpsiLists[[post_reps]]
+      # # YpsiPars1  = object1$MCMCposteriors$YpsiLists[[post_reps]]
       # MbetaPars1 = object1$MCMCposteriors$MbetaLists[[post_reps]]
       # Msig2Pars1 = object1$MCMCposteriors$Msig2Lists[[post_reps]]
-      # MpsiPars1  = object1$MCMCposteriors$MpsiLists[[post_reps]]
+      # # MpsiPars1  = object1$MCMCposteriors$MpsiLists[[post_reps]]
       # YMpsiPars1 = object1$MCMCposteriors$YMpsiLists[[post_reps]]
+      # covYMpsiPars1 = object1$MCMCposteriors$covYMpsiLists[[post_reps]]
       # 
       # # random-effects
-      # YMpsi_J0 = rmvn_cpp(J, rep(0,2), YMpsiPars0) # *sqrt(diag(YMpsiPars0)) # rbind(YpsiPars0,MpsiPars0)
+      # YMpsi_J0 = rmvn_cpp(J, rep(0,2), covYMpsiPars0) # * sqrt(diag(YMpsiPars0)) # rbind(YpsiPars0,MpsiPars0)
       # Ypsi_N0 = YMpsi_J0[1,Uindex]
       # Mpsi_N0 = YMpsi_J0[2,Uindex]
       # 
-      # YMpsi_J1 = rmvn_cpp(J, rep(0,2), YMpsiPars1) # *sqrt(diag(YMpsiPars1)) # rbind(YpsiPars1,MpsiPars1)
+      # YMpsi_J1 = rmvn_cpp(J, rep(0,2), covYMpsiPars1) # * sqrt(diag(YMpsiPars1)) # rbind(YpsiPars1,MpsiPars1)
       # Ypsi_N1 = YMpsi_J1[1,Uindex]
       # Mpsi_N1 = YMpsi_J1[2,Uindex]
       # 
@@ -646,10 +649,10 @@ BBmediationPOST = function(object,  # object from rBARTmediation
       #   M0_mc = rnorm(N, Mhat_z0_mc, MsigPars0)
       #   M1_mc = rnorm(N, Mhat_z1_mc, MsigPars1)
       # } else if (object0$typeM == "binary") {
-      #   if (object0$modelM == "probit") {
-      #     callM = pnorm
-      #   } else if (object0$modelM == "logit") {
+      #   if (is.null(object0$modelM)) {
       #     callM = plogis
+      #   } else {
+      #     callM = pnorm
       #   }
       #   M0_mc = rbinom(N,1, callM(Mhat_z0_mc))
       #   M1_mc = rbinom(N,1, callM(Mhat_z1_mc))
@@ -881,14 +884,15 @@ HBBmediationPOST = function(object, # object from predict(rBARTmediation)
       # ------------------------------------------------------------------------------
       YbetaPars = object$MCMCposteriors$YbetaLists[[post_reps]]
       Ysig2Pars = object$MCMCposteriors$Ysig2Lists[[post_reps]]
-      YpsiPars  = object$MCMCposteriors$YpsiLists[[post_reps]]
+      # YpsiPars  = object$MCMCposteriors$YpsiLists[[post_reps]]
       MbetaPars = object$MCMCposteriors$MbetaLists[[post_reps]]
       Msig2Pars = object$MCMCposteriors$Msig2Lists[[post_reps]]
-      MpsiPars  = object$MCMCposteriors$MpsiLists[[post_reps]]
-      YMpsiPars = object$MCMCposteriors$YMpsiLists[[post_reps]]
+      # MpsiPars  = object$MCMCposteriors$MpsiLists[[post_reps]]
+      # YMpsiPars = object$MCMCposteriors$YMpsiLists[[post_reps]]
+      covYMpsiPars = object$MCMCposteriors$covYMpsiLists[[post_reps]]
       
       # random-effects
-      YMpsi_J = rmvn_cpp(J, rep(0,2), cbind(c(1,0),c(0,1))) * sqrt(diag(YMpsiPars)) # rbind(YpsiPars,MpsiPars)
+      YMpsi_J = rmvn_cpp(J, rep(0,2), covYMpsiPars) # *sqrt(diag(YMpsiPars)) # rbind(YpsiPars,MpsiPars)
       Ypsi_N = YMpsi_J[1,Uindex] # rep(0, N)
       Mpsi_N = YMpsi_J[2,Uindex] # rep(0, N)
       
@@ -903,10 +907,10 @@ HBBmediationPOST = function(object, # object from predict(rBARTmediation)
         M0_mc = rnorm(N, Mhat_z0_mc, MsigPars)
         M1_mc = rnorm(N, Mhat_z1_mc, MsigPars)
       } else if (object$typeM == "binary") {
-        if (object0$modelM == "probit") {
-          callM = pnorm
-        } else if (object0$modelM == "logit") {
+        if (is.null(object$modelM)) {
           callM = plogis
+        } else {
+          callM = pnorm
         }
         M0_mc = rbinom(N,1, callM(Mhat_z0_mc))
         M1_mc = rbinom(N,1, callM(Mhat_z1_mc))
@@ -935,26 +939,28 @@ HBBmediationPOST = function(object, # object from predict(rBARTmediation)
       # # -----------------------------------------------------------------------------
       # YbetaPars0 = object0$MCMCposteriors$YbetaLists[[post_reps]]
       # Ysig2Pars0 = object0$MCMCposteriors$Ysig2Lists[[post_reps]]
-      # YpsiPars0  = object0$MCMCposteriors$YpsiLists[[post_reps]]
+      # # YpsiPars0  = object0$MCMCposteriors$YpsiLists[[post_reps]]
       # MbetaPars0 = object0$MCMCposteriors$MbetaLists[[post_reps]]
       # Msig2Pars0 = object0$MCMCposteriors$Msig2Lists[[post_reps]]
-      # MpsiPars0  = object0$MCMCposteriors$MpsiLists[[post_reps]]
+      # # MpsiPars0  = object0$MCMCposteriors$MpsiLists[[post_reps]]
       # YMpsiPars0 = object0$MCMCposteriors$YMpsiLists[[post_reps]]
+      # covYMpsiPars0 = object0$MCMCposteriors$covYMpsiLists[[post_reps]]
       # 
       # YbetaPars1 = object1$MCMCposteriors$YbetaLists[[post_reps]]
       # Ysig2Pars1 = object1$MCMCposteriors$Ysig2Lists[[post_reps]]
-      # YpsiPars1  = object1$MCMCposteriors$YpsiLists[[post_reps]]
+      # # YpsiPars1  = object1$MCMCposteriors$YpsiLists[[post_reps]]
       # MbetaPars1 = object1$MCMCposteriors$MbetaLists[[post_reps]]
       # Msig2Pars1 = object1$MCMCposteriors$Msig2Lists[[post_reps]]
-      # MpsiPars1  = object1$MCMCposteriors$MpsiLists[[post_reps]]
+      # # MpsiPars1  = object1$MCMCposteriors$MpsiLists[[post_reps]]
       # YMpsiPars1 = object1$MCMCposteriors$YMpsiLists[[post_reps]]
+      # covYMpsiPars1 = object1$MCMCposteriors$covYMpsiLists[[post_reps]]
       # 
       # # random-effects
-      # YMpsi_J0 = rmvn_cpp(J, rep(0,2), YMpsiPars0) # *sqrt(diag(YMpsiPars0)) # rbind(YpsiPars0,MpsiPars0)
+      # YMpsi_J0 = rmvn_cpp(J, rep(0,2), covYMpsiPars0) # * sqrt(diag(YMpsiPars0)) # rbind(YpsiPars0,MpsiPars0)
       # Ypsi_N0 = YMpsi_J0[1,Uindex]
       # Mpsi_N0 = YMpsi_J0[2,Uindex]
       # 
-      # YMpsi_J1 = rmvn_cpp(J, rep(0,2), YMpsiPars1) # *sqrt(diag(YMpsiPars1)) # rbind(YpsiPars1,MpsiPars1)
+      # YMpsi_J1 = rmvn_cpp(J, rep(0,2), covYMpsiPars1) # * sqrt(diag(YMpsiPars1)) # rbind(YpsiPars1,MpsiPars1)
       # Ypsi_N1 = YMpsi_J1[1,Uindex]
       # Mpsi_N1 = YMpsi_J1[2,Uindex]
       # 
@@ -969,10 +975,10 @@ HBBmediationPOST = function(object, # object from predict(rBARTmediation)
       #   M0_mc = rnorm(N, Mhat_z0_mc, MsigPars0)
       #   M1_mc = rnorm(N, Mhat_z1_mc, MsigPars1)
       # } else if (object0$typeM == "binary") {
-      #   if (object0$modelM == "probit") {
-      #     callM = pnorm
-      #   } else if (object0$modelM == "logit") {
+      #   if (is.null(object0$modelM)) {
       #     callM = plogis
+      #   } else {
+      #     callM = pnorm
       #   }
       #   M0_mc = rbinom(N,1, callM(Mhat_z0_mc))
       #   M1_mc = rbinom(N,1, callM(Mhat_z1_mc))
@@ -1232,15 +1238,15 @@ TSBBmediationPOST = function(object, # object from predict(rBARTmediation)
       # ------------------------------------------------------------------------------
       YbetaPars = object$MCMCposteriors$YbetaLists[[post_reps]]
       Ysig2Pars = object$MCMCposteriors$Ysig2Lists[[post_reps]]
-      YpsiPars  = object$MCMCposteriors$YpsiLists[[post_reps]]
+      # YpsiPars  = object$MCMCposteriors$YpsiLists[[post_reps]]
       MbetaPars = object$MCMCposteriors$MbetaLists[[post_reps]]
       Msig2Pars = object$MCMCposteriors$Msig2Lists[[post_reps]]
-      MpsiPars  = object$MCMCposteriors$MpsiLists[[post_reps]]
-      YMpsiPars = object$MCMCposteriors$YMpsiLists[[post_reps]]
+      # MpsiPars  = object$MCMCposteriors$MpsiLists[[post_reps]]
+      # YMpsiPars = object$MCMCposteriors$YMpsiLists[[post_reps]]
+      covYMpsiPars = object$MCMCposteriors$covYMpsiLists[[post_reps]]
       
       # random-effects
-      # random-effects
-      YMpsi_J = rmvn_cpp(J, rep(0,2), cbind(c(1,0),c(0,1))) * sqrt(diag(YMpsiPars)) # rbind(YpsiPars,MpsiPars)
+      YMpsi_J = rmvn_cpp(J, rep(0,2), covYMpsiPars) # *sqrt(diag(YMpsiPars)) # rbind(YpsiPars,MpsiPars)
       Ypsi_N = YMpsi_J[1,UindexTSBB] # rep(0, N)
       Mpsi_N = YMpsi_J[2,UindexTSBB] # rep(0, N)
       
@@ -1255,10 +1261,10 @@ TSBBmediationPOST = function(object, # object from predict(rBARTmediation)
         M0_mc = rnorm(NJ, Mhat_z0_mc, MsigPars)
         M1_mc = rnorm(NJ, Mhat_z1_mc, MsigPars)
       } else if (object$typeM == "binary") {
-        if (object0$modelM == "probit") {
-          callM = pnorm
-        } else if (object0$modelM == "logit") {
+        if (is.null(object$modelM)) {
           callM = plogis
+        } else {
+          callM = pnorm
         }
         M0_mc = rbinom(NJ,1, callM(Mhat_z0_mc))
         M1_mc = rbinom(NJ,1, callM(Mhat_z1_mc))
@@ -1287,26 +1293,28 @@ TSBBmediationPOST = function(object, # object from predict(rBARTmediation)
       # # -----------------------------------------------------------------------------
       # YbetaPars0 = object0$MCMCposteriors$YbetaLists[[post_reps]]
       # Ysig2Pars0 = object0$MCMCposteriors$Ysig2Lists[[post_reps]]
-      # YpsiPars0  = object0$MCMCposteriors$YpsiLists[[post_reps]]
+      # # YpsiPars0  = object0$MCMCposteriors$YpsiLists[[post_reps]]
       # MbetaPars0 = object0$MCMCposteriors$MbetaLists[[post_reps]]
       # Msig2Pars0 = object0$MCMCposteriors$Msig2Lists[[post_reps]]
-      # MpsiPars0  = object0$MCMCposteriors$MpsiLists[[post_reps]]
+      # # MpsiParsC0  = object0$MCMCposteriors$MpsiLists[[post_reps]]
       # YMpsiPars0 = object0$MCMCposteriors$YMpsiLists[[post_reps]]
+      # covYMpsiPars0 = object0$MCMCposteriors$covYMpsiLists[[post_reps]]
       # 
       # YbetaPars1 = object1$MCMCposteriors$YbetaLists[[post_reps]]
       # Ysig2Pars1 = object1$MCMCposteriors$Ysig2Lists[[post_reps]]
-      # YpsiPars1  = object1$MCMCposteriors$YpsiLists[[post_reps]]
+      # # YpsiPars1  = object1$MCMCposteriors$YpsiLists[[post_reps]]
       # MbetaPars1 = object1$MCMCposteriors$MbetaLists[[post_reps]]
       # Msig2Pars1 = object1$MCMCposteriors$Msig2Lists[[post_reps]]
-      # MpsiPars1  = object1$MCMCposteriors$MpsiLists[[post_reps]]
+      # # MpsiPars1  = object1$MCMCposteriors$MpsiLists[[post_reps]]
       # YMpsiPars1 = object1$MCMCposteriors$YMpsiLists[[post_reps]]
+      # covYMpsiPars1 = object1$MCMCposteriors$covYMpsiLists[[post_reps]]
       # 
       # # random-effects
-      # YMpsi_J0 = rmvn_cpp(J, rep(0,2), YMpsiPars0) # *sqrt(diag(YMpsiPars0)) # rbind(YpsiPars0,MpsiPars0)
+      # YMpsi_J0 = rmvn_cpp(J, rep(0,2), covYMpsiPars0) # * sqrt(diag(YMpsiPars0)) # rbind(YpsiPars0,MpsiPars0)
       # Ypsi_N0 = YMpsi_J0[1,UindexTSBB]
       # Mpsi_N0 = YMpsi_J0[2,UindexTSBB]
       # 
-      # YMpsi_J1 = rmvn_cpp(J, rep(0,2), YMpsiPars1) # *sqrt(diag(YMpsiPars1)) # rbind(YpsiPars1,MpsiPars1)
+      # YMpsi_J1 = rmvn_cpp(J, rep(0,2), covYMpsiPars1) # * sqrt(diag(YMpsiPars1)) # rbind(YpsiPars1,MpsiPars1)
       # Ypsi_N1 = YMpsi_J1[1,UindexTSBB]
       # Mpsi_N1 = YMpsi_J1[2,UindexTSBB]
       # 
@@ -1321,10 +1329,10 @@ TSBBmediationPOST = function(object, # object from predict(rBARTmediation)
       #   M0_mc = rnorm(NJ, Mhat_z0_mc, MsigPars0)
       #   M1_mc = rnorm(NJ, Mhat_z1_mc, MsigPars1)
       # } else if (object0$typeM == "binary") {
-      #   if (object0$modelM == "probit") {
-      #     callM = pnorm
-      #   } else if (object0$modelM == "logit") {
+      #   if (is.null(object0$modelM)) {
       #     callM = plogis
+      #   } else {
+      #     callM = pnorm
       #   }
       #   M0_mc = rbinom(NJ,1, callM(Mhat_z0_mc))
       #   M1_mc = rbinom(NJ,1, callM(Mhat_z1_mc))
@@ -1620,14 +1628,15 @@ TSBBmediationPOSTsim = function(object, # object from predict(rBARTmediation)
       # ------------------------------------------------------------------------------
       YbetaPars = object$MCMCposteriors$YbetaLists[[post_reps]]
       Ysig2Pars = object$MCMCposteriors$Ysig2Lists[[post_reps]]
-      YpsiPars  = object$MCMCposteriors$YpsiLists[[post_reps]]
+      # YpsiPars  = object$MCMCposteriors$YpsiLists[[post_reps]]
       MbetaPars = object$MCMCposteriors$MbetaLists[[post_reps]]
       Msig2Pars = object$MCMCposteriors$Msig2Lists[[post_reps]]
-      MpsiPars  = object$MCMCposteriors$MpsiLists[[post_reps]]
-      YMpsiPars = object$MCMCposteriors$YMpsiLists[[post_reps]]
+      # MpsiPars  = object$MCMCposteriors$MpsiLists[[post_reps]]
+      # YMpsiPars = object$MCMCposteriors$YMpsiLists[[post_reps]]
+      covYMpsiPars = object$MCMCposteriors$covYMpsiLists[[post_reps]]
       
       # random-effects
-      YMpsi_J = rmvn_cpp(J, rep(0,2), cbind(c(1,0),c(0,1))) * sqrt(diag(YMpsiPars)) # rbind(YpsiPars,MpsiPars)
+      YMpsi_J = rmvn_cpp(J, rep(0,2), covYMpsiPars) # *sqrt(diag(YMpsiPars)) # rbind(YpsiPars,MpsiPars)
       Ypsi_N = YMpsi_J[1,UindexTSBB] # rep(0, N)
       Mpsi_N = YMpsi_J[2,UindexTSBB] # rep(0, N)
       
@@ -1642,10 +1651,10 @@ TSBBmediationPOSTsim = function(object, # object from predict(rBARTmediation)
         M0_mc = rnorm(NJ, Mhat_z0_mc, MsigPars)
         M1_mc = rnorm(NJ, Mhat_z1_mc, MsigPars)
       } else if (object$typeM == "binary") {
-        if (object0$modelM == "probit") {
-          callM = pnorm
-        } else if (object0$modelM == "logit") {
+        if (is.null(object$modelM)) {
           callM = plogis
+        } else {
+          callM = pnorm
         }
         M0_mc = rbinom(NJ,1, callM(Mhat_z0_mc))
         M1_mc = rbinom(NJ,1, callM(Mhat_z1_mc))
@@ -1674,26 +1683,28 @@ TSBBmediationPOSTsim = function(object, # object from predict(rBARTmediation)
       # # -----------------------------------------------------------------------------
       # YbetaPars0 = object0$MCMCposteriors$YbetaLists[[post_reps]]
       # Ysig2Pars0 = object0$MCMCposteriors$Ysig2Lists[[post_reps]]
-      # YpsiPars0  = object0$MCMCposteriors$YpsiLists[[post_reps]]
+      # # YpsiPars0  = object0$MCMCposteriors$YpsiLists[[post_reps]]
       # MbetaPars0 = object0$MCMCposteriors$MbetaLists[[post_reps]]
       # Msig2Pars0 = object0$MCMCposteriors$Msig2Lists[[post_reps]]
-      # MpsiPars0  = object0$MCMCposteriors$MpsiLists[[post_reps]]
+      # # MpsiParsC0  = object0$MCMCposteriors$MpsiLists[[post_reps]]
       # YMpsiPars0 = object0$MCMCposteriors$YMpsiLists[[post_reps]]
+      # covYMpsiPars0 = object0$MCMCposteriors$covYMpsiLists[[post_reps]]
       # 
       # YbetaPars1 = object1$MCMCposteriors$YbetaLists[[post_reps]]
       # Ysig2Pars1 = object1$MCMCposteriors$Ysig2Lists[[post_reps]]
-      # YpsiPars1  = object1$MCMCposteriors$YpsiLists[[post_reps]]
+      # # YpsiPars1  = object1$MCMCposteriors$YpsiLists[[post_reps]]
       # MbetaPars1 = object1$MCMCposteriors$MbetaLists[[post_reps]]
       # Msig2Pars1 = object1$MCMCposteriors$Msig2Lists[[post_reps]]
-      # MpsiPars1  = object1$MCMCposteriors$MpsiLists[[post_reps]]
+      # # MpsiPars1  = object1$MCMCposteriors$MpsiLists[[post_reps]]
       # YMpsiPars1 = object1$MCMCposteriors$YMpsiLists[[post_reps]]
+      # covYMpsiPars1 = object1$MCMCposteriors$covYMpsiLists[[post_reps]]
       # 
       # # random-effects
-      # YMpsi_J0 = rmvn_cpp(J, rep(0,2), YMpsiPars0) # *sqrt(diag(YMpsiPars0)) # rbind(YpsiPars0,MpsiPars0)
+      # YMpsi_J0 = rmvn_cpp(J, rep(0,2), covYMpsiPars0) # * sqrt(diag(YMpsiPars0)) # rbind(YpsiPars0,MpsiPars0)
       # Ypsi_N0 = YMpsi_J0[1,UindexTSBB]
       # Mpsi_N0 = YMpsi_J0[2,UindexTSBB]
       # 
-      # YMpsi_J1 = rmvn_cpp(J, rep(0,2), YMpsiPars1) # *sqrt(diag(YMpsiPars1)) # rbind(YpsiPars1,MpsiPars1)
+      # YMpsi_J1 = rmvn_cpp(J, rep(0,2), covYMpsiPars1) # * sqrt(diag(YMpsiPars1)) # rbind(YpsiPars1,MpsiPars1)
       # Ypsi_N1 = YMpsi_J1[1,UindexTSBB]
       # Mpsi_N1 = YMpsi_J1[2,UindexTSBB]
       # 
@@ -1705,16 +1716,16 @@ TSBBmediationPOSTsim = function(object, # object from predict(rBARTmediation)
       # if (object0$typeM == "continuous") {
       #   MsigPars0  = sqrt(Msig2Pars0)
       #   MsigPars1  = sqrt(Msig2Pars1)
-      #   M0_mc = rnorm(N, Mhat_z0_mc, MsigPars0)
-      #   M1_mc = rnorm(N, Mhat_z1_mc, MsigPars1)
+      #   M0_mc = rnorm(NJ, Mhat_z0_mc, MsigPars0)
+      #   M1_mc = rnorm(NJ, Mhat_z1_mc, MsigPars1)
       # } else if (object0$typeM == "binary") {
-      #   if (object0$modelM == "probit") {
-      #     callM = pnorm
-      #   } else if (object0$modelM == "logit") {
+      #   if (is.null(object0$modelM)) {
       #     callM = plogis
+      #   } else {
+      #     callM = pnorm
       #   }
-      #   M0_mc = rbinom(N,1, callM(Mhat_z0_mc))
-      #   M1_mc = rbinom(N,1, callM(Mhat_z1_mc))
+      #   M0_mc = rbinom(NJ,1, callM(Mhat_z0_mc))
+      #   M1_mc = rbinom(NJ,1, callM(Mhat_z1_mc))
       # }
       # 
       # # Normal model for continuous Y
@@ -1734,7 +1745,7 @@ TSBBmediationPOSTsim = function(object, # object from predict(rBARTmediation)
       # } else if (object0$typeY == "binary") {
       #   Yhat_z0m0_mc = rbinom(NJ, 1, plogis(Yhat_z0m0_mc))
       #   Yhat_z1m0_mc = rbinom(NJ, 1, plogis(Yhat_z1m0_mc))
-      #   Yhat_z1m1_mc = rbinom(N,J 1, plogis(Yhat_z1m1_mc))
+      #   Yhat_z1m1_mc = rbinom(NJ, 1, plogis(Yhat_z1m1_mc))
       # }
       
       # ------------------------------------------------------------------------------
@@ -2034,16 +2045,15 @@ CcondTSBBmediationPOST = function(object, # object from rBARTmediation
           # ------------------------------------------------------------------------------
           YbetaPars = object$MCMCposteriors$YbetaLists[[post_reps]]
           Ysig2Pars = object$MCMCposteriors$Ysig2Lists[[post_reps]]
-          YpsiPars  = object$MCMCposteriors$YpsiLists[[post_reps]]
+          # YpsiPars  = object$MCMCposteriors$YpsiLists[[post_reps]]
           MbetaPars = object$MCMCposteriors$MbetaLists[[post_reps]]
           Msig2Pars = object$MCMCposteriors$Msig2Lists[[post_reps]]
-          MpsiPars  = object$MCMCposteriors$MpsiLists[[post_reps]]
-          YMpsiPars = object$MCMCposteriors$YMpsiLists[[post_reps]]
-          YsigPars = sqrt(Ysig2Pars)
-          MsigPars = sqrt(Msig2Pars)
+          # MpsiPars  = object$MCMCposteriors$MpsiLists[[post_reps]]
+          # YMpsiPars = object$MCMCposteriors$YMpsiLists[[post_reps]]
+          covYMpsiPars = object$MCMCposteriors$covYMpsiLists[[post_reps]]
           
           # random-effects
-          YMpsi_J = rmvn_cpp(J, rep(0,2), cbind(c(1,0),c(0,1))) * sqrt(diag(YMpsiPars)) # rbind(YpsiPars,MpsiPars)
+          YMpsi_J = rmvn_cpp(J, rep(0,2), covYMpsiPars) # *sqrt(diag(YMpsiPars)) # rbind(YpsiPars,MpsiPars)
           Ypsi_N = YMpsi_J[1,UindexTSBB] # rep(0, N)
           Mpsi_N = YMpsi_J[2,UindexTSBB] # rep(0, N)
           
@@ -2099,10 +2109,10 @@ CcondTSBBmediationPOST = function(object, # object from rBARTmediation
           }
         }
       } else if (object$typeM == "binary") {
-        if (object0$modelM == "probit") {
-          callM = pnorm
-        } else if (object0$modelM == "logit") {
+        if (is.null(object$modelM)) {
           callM = plogis
+        } else {
+          callM = pnorm
         }
         
         # Define POST function for continuous Y and binary M using TSBB
@@ -2131,14 +2141,15 @@ CcondTSBBmediationPOST = function(object, # object from rBARTmediation
           # ------------------------------------------------------------------------------
           YbetaPars = object$MCMCposteriors$YbetaLists[[post_reps]]
           Ysig2Pars = object$MCMCposteriors$Ysig2Lists[[post_reps]]
-          YpsiPars  = object$MCMCposteriors$YpsiLists[[post_reps]]
+          # YpsiPars  = object$MCMCposteriors$YpsiLists[[post_reps]]
           MbetaPars = object$MCMCposteriors$MbetaLists[[post_reps]]
-          MpsiPars  = object$MCMCposteriors$MpsiLists[[post_reps]]
-          YMpsiPars = object$MCMCposteriors$YMpsiLists[[post_reps]]
-          YsigPars = sqrt(Ysig2Pars)
+          Msig2Pars = object$MCMCposteriors$Msig2Lists[[post_reps]]
+          # MpsiPars  = object$MCMCposteriors$MpsiLists[[post_reps]]
+          # YMpsiPars = object$MCMCposteriors$YMpsiLists[[post_reps]]
+          covYMpsiPars = object$MCMCposteriors$covYMpsiLists[[post_reps]]
           
           # random-effects
-          YMpsi_J = rmvn_cpp(J, rep(0,2), cbind(c(1,0),c(0,1))) * sqrt(diag(YMpsiPars)) # rbind(YpsiPars,MpsiPars)
+          YMpsi_J = rmvn_cpp(J, rep(0,2), covYMpsiPars) # *sqrt(diag(YMpsiPars)) # rbind(YpsiPars,MpsiPars)
           Ypsi_N = YMpsi_J[1,UindexTSBB] # rep(0, N)
           Mpsi_N = YMpsi_J[2,UindexTSBB] # rep(0, N)
           
@@ -2454,16 +2465,15 @@ VcondTSBBmediationPOST = function(object, # object from rBARTmediation
           # ------------------------------------------------------------------------------
           YbetaPars = object$MCMCposteriors$YbetaLists[[post_reps]]
           Ysig2Pars = object$MCMCposteriors$Ysig2Lists[[post_reps]]
-          YpsiPars  = object$MCMCposteriors$YpsiLists[[post_reps]]
+          # YpsiPars  = object$MCMCposteriors$YpsiLists[[post_reps]]
           MbetaPars = object$MCMCposteriors$MbetaLists[[post_reps]]
           Msig2Pars = object$MCMCposteriors$Msig2Lists[[post_reps]]
-          MpsiPars  = object$MCMCposteriors$MpsiLists[[post_reps]]
-          YMpsiPars = object$MCMCposteriors$YMpsiLists[[post_reps]]
-          YsigPars = sqrt(Ysig2Pars)
-          MsigPars = sqrt(Msig2Pars)
+          # MpsiPars  = object$MCMCposteriors$MpsiLists[[post_reps]]
+          # YMpsiPars = object$MCMCposteriors$YMpsiLists[[post_reps]]
+          covYMpsiPars = object$MCMCposteriors$covYMpsiLists[[post_reps]]
           
           # random-effects
-          YMpsi_J = rmvn_cpp(J, rep(0,2), cbind(c(1,0),c(0,1))) * sqrt(diag(YMpsiPars)) # rbind(YpsiPars,MpsiPars)
+          YMpsi_J = rmvn_cpp(J, rep(0,2), covYMpsiPars) # *sqrt(diag(YMpsiPars)) # rbind(YpsiPars,MpsiPars)
           Ypsi_N = YMpsi_J[1,UindexTSBB] # rep(0, N)
           Mpsi_N = YMpsi_J[2,UindexTSBB] # rep(0, N)
           
@@ -2519,10 +2529,10 @@ VcondTSBBmediationPOST = function(object, # object from rBARTmediation
           }
         }
       } else if (object$typeM == "binary") {
-        if (object0$modelM == "probit") {
-          callM = pnorm
-        } else if (object0$modelM == "logit") {
+        if (is.null(object$modelM)) {
           callM = plogis
+        } else {
+          callM = pnorm
         }
         
         # Define POST function for continuous Y and binary M using TSBB
@@ -2551,14 +2561,15 @@ VcondTSBBmediationPOST = function(object, # object from rBARTmediation
           # ------------------------------------------------------------------------------
           YbetaPars = object$MCMCposteriors$YbetaLists[[post_reps]]
           Ysig2Pars = object$MCMCposteriors$Ysig2Lists[[post_reps]]
-          YpsiPars  = object$MCMCposteriors$YpsiLists[[post_reps]]
+          # YpsiPars  = object$MCMCposteriors$YpsiLists[[post_reps]]
           MbetaPars = object$MCMCposteriors$MbetaLists[[post_reps]]
-          MpsiPars  = object$MCMCposteriors$MpsiLists[[post_reps]]
-          YMpsiPars = object$MCMCposteriors$YMpsiLists[[post_reps]]
-          YsigPars = sqrt(Ysig2Pars)
+          Msig2Pars = object$MCMCposteriors$Msig2Lists[[post_reps]]
+          # MpsiPars  = object$MCMCposteriors$MpsiLists[[post_reps]]
+          # YMpsiPars = object$MCMCposteriors$YMpsiLists[[post_reps]]
+          covYMpsiPars = object$MCMCposteriors$covYMpsiLists[[post_reps]]
           
           # random-effects
-          YMpsi_J = rmvn_cpp(J, rep(0,2), cbind(c(1,0),c(0,1))) * sqrt(diag(YMpsiPars)) # rbind(YpsiPars,MpsiPars)
+          YMpsi_J = rmvn_cpp(J, rep(0,2), covYMpsiPars) # *sqrt(diag(YMpsiPars)) # rbind(YpsiPars,MpsiPars)
           Ypsi_N = YMpsi_J[1,UindexTSBB] # rep(0, N)
           Mpsi_N = YMpsi_J[2,UindexTSBB] # rep(0, N)
           
@@ -2748,33 +2759,34 @@ GLMmediationMCMCconYconM = function(Y, M, Z, C, V, Uindex,
     real<lower=0> Ysig2;
     vector[py] Ybeta;
     
-    vector[J] Mpsi;
-    vector[J] Ypsi;
-    vector<lower=0>[2] diagYMpsi;
-    corr_matrix[2] corrYMpsi;
+    array[J] vector[2] YMpsi;
+    cov_matrix[2] covYMpsi;
+    // corr_matrix[2] corrYMpsi;
+    // vector<lower=0>[2] diagYMpsi;
   }
-  transformed parameters {
-    matrix[2, 2] YMpsi = quad_form_diag(corrYMpsi, diagYMpsi);
-  }
+  // transformed parameters {
+  //   matrix[2, 2] covYMpsi = quad_form_diag(corrYMpsi, diagYMpsi);
+  // }
   model {
     // Priors for psi - cluster-level intercepts: mediator & outcome glm
     // hyper-priors
-    // diagYMpsi ~ cauchy(0, 2); // , 5);
-    // corrYMpsi ~ lkj_corr(2);
+    // covYMpsi ~ inv_wishart(2, identity_matrix(2));
+    // diagYMpsi ~ cauchy(0, 10);
+    // corrYMpsi ~ lkj_corr(1);
+    
     // priors
-    Mpsi ~ std_normal();
-    Ypsi ~ std_normal();
-    // Mbeta ~ normal(0, 5);
-    // Msig2 ~ cauchy(0, 2); // , 5);
-    // Ybeta ~ normal(0, 5);
-    // Ysig2 ~ cauchy(0, 2); // , 5);
+    YMpsi ~ multi_normal(rep_vector(0,2), covYMpsi);
+    // Mbeta ~ normal(0, 10); 
+    // Msig2 ~ cauchy(0, 5); // scaled_inv_chi_square(2, 10);
+    // Ybeta ~ normal(0, 10); 
+    // Ysig2 ~ cauchy(0, 5); // scaled_inv_chi_square(2, 10);
     
     // GLM likelihood
     vector[N] Mhat;
     vector[N] Yhat;
     for (i in 1:N) {
-      Mhat[i] = matX[i] * Mbeta + Mpsi[Uindex[i]] * sqrt(YMpsi[2,2]);
-      Yhat[i] = matM[i] * Ybeta + Ypsi[Uindex[i]] * sqrt(YMpsi[1,1]);
+      Mhat[i] = matX[i] * Mbeta + YMpsi[Uindex[i],2];
+      Yhat[i] = matM[i] * Ybeta + YMpsi[Uindex[i],1];
     }
     M ~ normal(Mhat, sqrt(Msig2));
     Y ~ normal(Yhat, sqrt(Ysig2));
@@ -2801,8 +2813,8 @@ GLMmediationMCMCconYconM = function(Y, M, Z, C, V, Uindex,
   
   stanfit = stan(model_code = stan_code, data = stan_data,
                  iter = gibbs_total, warmup = gibbs_burnin, thin = gibbs_thin,
-                 pars = c("Ybeta", "Ysig2", "Ypsi", "Mbeta", "Msig2", "Mpsi", "YMpsi"),
-                 chains = 1)
+                 pars = c("Ybeta", "Ysig2", "Mbeta", "Msig2", "YMpsi", "covYMpsi"),
+                 control = list(max_treedepth = 15), chains = 1)
   # , control=list(adapt_delta=0.95)
   
   extractfit = rstan::extract(stanfit)
@@ -2817,6 +2829,7 @@ GLMmediationMCMCconYconM = function(Y, M, Z, C, V, Uindex,
   Msig2Lists = list(NA)
   MpsiLists  = list(NA)
   YMpsiLists = list(NA)
+  covYMpsiLists = list(NA)
   # End initial values ------------------------------------------------------------
   for (gibbs_reps in 1:n_MCMC) {
     # Save all parameters
@@ -2827,6 +2840,7 @@ GLMmediationMCMCconYconM = function(Y, M, Z, C, V, Uindex,
     Msig2Lists[[gibbs_reps]] = extractfit$Msig2[gibbs_reps]
     MpsiLists[[gibbs_reps]]  = extractfit$Mpsi[gibbs_reps,]
     YMpsiLists[[gibbs_reps]] = extractfit$YMpsi[gibbs_reps,,]
+    covYMpsiLists[[gibbs_reps]] = extractfit$covYMpsi[gibbs_reps,,]
   }
   
   # constants
@@ -2844,7 +2858,8 @@ GLMmediationMCMCconYconM = function(Y, M, Z, C, V, Uindex,
                         MbetaLists = MbetaLists,
                         Msig2Lists = Msig2Lists,
                         MpsiLists = MpsiLists,
-                        YMpsiLists = YMpsiLists)
+                        YMpsiLists = YMpsiLists,
+                        covYMpsiLists = covYMpsiLists)
   
   # MCMC results
   object = list(obsdata = obsdata,
@@ -2921,32 +2936,33 @@ GLMmediationMCMCconYbinM = function(Y, M, Z, C, V, Uindex,
       real<lower=0> Ysig2;
       vector[py] Ybeta;
       
-      vector[J] Mpsi;
-      vector[J] Ypsi;
-      vector<lower=0>[2] diagYMpsi;
-      corr_matrix[2] corrYMpsi;
+      array[J] vector[2] YMpsi;
+      cov_matrix[2] covYMpsi;
+      // corr_matrix[2] corrYMpsi;
+      // vector<lower=0>[2] diagYMpsi;
     }
-    transformed parameters {
-      matrix[2, 2] YMpsi = quad_form_diag(corrYMpsi, diagYMpsi);
-    }
+    // transformed parameters {
+    //   matrix[2, 2] covYMpsi = quad_form_diag(corrYMpsi, diagYMpsi);
+    // }
     model {
       // Priors for psi - cluster-level intercepts: mediator & outcome glm
       // hyper-priors
-      // diagYMpsi ~ cauchy(0, 2); // , 5);
-      // corrYMpsi ~ lkj_corr(2);
+      // covYMpsi ~ inv_wishart(2, identity_matrix(2));
+      // diagYMpsi ~ cauchy(0, 10);
+      // corrYMpsi ~ lkj_corr(1);
+      
       // priors
-      Mpsi ~ std_normal();
-      Ypsi ~ std_normal();
-      // Mbeta ~ normal(0, 5);
-      // Ybeta ~ normal(0, 5);
-      // Ysig2 ~ cauchy(0, 2); // , 5);
+      YMpsi ~ multi_normal(rep_vector(0,2), covYMpsi);
+      // Mbeta ~ normal(0, 10);
+      // Ybeta ~ normal(0, 10);
+      // Ysig2 ~ cauchy(0, 5); // scaled_inv_chi_square(2, 10);
       
       // GLM likelihood
       vector[N] Mhat;
       vector[N] Yhat;
       for (i in 1:N) {
-        Mhat[i] = matX[i] * Mbeta + Mpsi[Uindex[i]] * sqrt(YMpsi[2,2]);
-        Yhat[i] = matM[i] * Ybeta + Ypsi[Uindex[i]] * sqrt(YMpsi[1,1]);
+        Mhat[i] = matX[i] * Mbeta + YMpsi[Uindex[i],2];
+        Yhat[i] = matM[i] * Ybeta + YMpsi[Uindex[i],1];
       }
       M ~ bernoulli(Phi(Mhat));
       Y ~ normal(Yhat, sqrt(Ysig2));
@@ -2972,32 +2988,33 @@ GLMmediationMCMCconYbinM = function(Y, M, Z, C, V, Uindex,
       real<lower=0> Ysig2;
       vector[py] Ybeta;
       
-      vector[J] Mpsi;
-      vector[J] Ypsi;
-      vector<lower=0>[2] diagYMpsi;
-      corr_matrix[2] corrYMpsi;
+      array[J] vector[2] YMpsi;
+      cov_matrix[2] covYMpsi;
+      // corr_matrix[2] corrYMpsi;
+      // vector<lower=0>[2] diagYMpsi;
     }
-    transformed parameters {
-      matrix[2, 2] YMpsi = quad_form_diag(corrYMpsi, diagYMpsi);
-    }
+    // transformed parameters {
+    //   matrix[2, 2] covYMpsi = quad_form_diag(corrYMpsi, diagYMpsi);
+    // }
     model {
       // Priors for psi - cluster-level intercepts: mediator & outcome glm
       // hyper-priors
-      // diagYMpsi ~ cauchy(0, 2); // , 5);
-      // corrYMpsi ~ lkj_corr(2);
+      // covYMpsi ~ inv_wishart(2, identity_matrix(2));
+      // diagYMpsi ~ cauchy(0, 10);
+      // corrYMpsi ~ lkj_corr(1);
+      
       // priors
-      Mpsi ~ std_normal();
-      Ypsi ~ std_normal();
-      // Mbeta ~ normal(0, 5);
-      // Ybeta ~ normal(0, 5);
-      // Ysig2 ~ cauchy(0, 2); // , 5);
+      YMpsi ~ multi_normal(rep_vector(0,2), covYMpsi);
+      // Mbeta ~ normal(0, 10);
+      // Ybeta ~ normal(0, 10);
+      // Ysig2 ~ cauchy(0, 5); // scaled_inv_chi_square(2, 10);
       
       // GLM likelihood
       vector[N] Mhat;
       vector[N] Yhat;
       for (i in 1:N) {
-        Mhat[i] = matX[i] * Mbeta + Mpsi[Uindex[i]] * sqrt(YMpsi[2,2]);
-        Yhat[i] = matM[i] * Ybeta + Ypsi[Uindex[i]] * sqrt(YMpsi[1,1]);
+        Mhat[i] = matX[i] * Mbeta + YMpsi[Uindex[i],2];
+        Yhat[i] = matM[i] * Ybeta + YMpsi[Uindex[i],1];
       }
       M ~ bernoulli_logit(Mhat);
       Y ~ normal(Yhat, sqrt(Ysig2));
@@ -3025,15 +3042,15 @@ GLMmediationMCMCconYbinM = function(Y, M, Z, C, V, Uindex,
   
   stanfit = stan(model_code = stan_code, data = stan_data, 
                  iter = gibbs_total, warmup = gibbs_burnin, thin = gibbs_thin,
-                 pars = c("Ybeta", "Ysig2", "Ypsi", "Mbeta", "Mpsi", "YMpsi"),
-                 chains = 1)
+                 pars = c("Ybeta", "Ysig2", "Mbeta", "YMpsi", "covYMpsi"),
+                 control = list(max_treedepth = 15), chains = 1)
   # init = list(Ybeta = rep(0,py), Ysig2 = 1, Mbeta = rep(0,pm), 
   #             Ypsi = rep(0,J), Mpsi = rep(0,J), 
   #             diagYMpsi = rep(0,2), corrYMpsi = 0)
   # stanfit = stan(model_code = stan_code, data = stan_data, init = init, 
   #                iter = gibbs_total, warmup = gibbs_burnin, thin = gibbs_thin,
-  #                pars = c("Ybeta", "Ysig2", "Ypsi", "Mbeta", "Mpsi", "YMpsi"),
-  #                chains = 1)
+  #                pars = c("Ybeta", "Ysig2", "Ypsi", "Mbeta", "Mpsi", "YMpsi", "covYMpsi"),
+  #                control = list(max_treedepth = 15), chains = 1)
   # , control=list(adapt_delta=0.95)
   
   extractfit = rstan::extract(stanfit)
@@ -3047,6 +3064,7 @@ GLMmediationMCMCconYbinM = function(Y, M, Z, C, V, Uindex,
   MbetaLists = list(NA)
   MpsiLists  = list(NA)
   YMpsiLists = list(NA)
+  covYMpsiLists = list(NA)
   # End initial values ------------------------------------------------------------
   for (gibbs_reps in 1:n_MCMC) {
     # Save all parameters
@@ -3056,6 +3074,7 @@ GLMmediationMCMCconYbinM = function(Y, M, Z, C, V, Uindex,
     MbetaLists[[gibbs_reps]] = extractfit$Mbeta[gibbs_reps,]
     MpsiLists[[gibbs_reps]]  = extractfit$Mpsi[gibbs_reps,]
     YMpsiLists[[gibbs_reps]] = extractfit$YMpsi[gibbs_reps,,]
+    covYMpsiLists[[gibbs_reps]] = extractfit$covYMpsi[gibbs_reps,,]
   }
   
   # constants
@@ -3072,7 +3091,8 @@ GLMmediationMCMCconYbinM = function(Y, M, Z, C, V, Uindex,
                         YpsiLists = YpsiLists,
                         MbetaLists = MbetaLists,
                         MpsiLists = MpsiLists,
-                        YMpsiLists = YMpsiLists)
+                        YMpsiLists = YMpsiLists,
+                        covYMpsiLists = covYMpsiLists)
   
   # MCMC results
   object = list(obsdata = obsdata,
@@ -3147,31 +3167,32 @@ GLMmediationMCMCbinYbinM = function(Y, M, Z, C, V, Uindex,
       vector[pm] Mbeta;
       vector[py] Ybeta;
       
-      vector[J] Mpsi;
-      vector[J] Ypsi;
-      vector<lower=0>[2] diagYMpsi;
-      corr_matrix[2] corrYMpsi;
+      array[J] vector[2] YMpsi;
+      cov_matrix[2] covYMpsi;
+      // corr_matrix[2] corrYMpsi;
+      // vector<lower=0>[2] diagYMpsi;
     }
-    transformed parameters {
-      matrix[2, 2] YMpsi = quad_form_diag(corrYMpsi, diagYMpsi);
-    }
+    // transformed parameters {
+    //   matrix[2, 2] covYMpsi = quad_form_diag(corrYMpsi, diagYMpsi);
+    // }
     model {
       // Priors for psi - cluster-level intercepts: mediator & outcome glm
       // hyper-priors
-      // diagYMpsi ~ cauchy(0, 2); // , 5);
-      // corrYMpsi ~ lkj_corr(2);
+      // covYMpsi ~ inv_wishart(2, identity_matrix(2));
+      // diagYMpsi ~ cauchy(0, 10);
+      // corrYMpsi ~ lkj_corr(1);
+      
       // priors
-      Mpsi ~ std_normal();
-      Ypsi ~ std_normal();
-      // Mbeta ~ normal(0, 5);
-      // Ybeta ~ normal(0, 5);
+      YMpsi ~ multi_normal(rep_vector(0,2), covYMpsi);
+      // Mbeta ~ normal(0, 10);
+      // Ybeta ~ normal(0, 10);
       
       // GLM likelihood
       vector[N] Mhat;
       vector[N] Yhat;
       for (i in 1:N) {
-        Mhat[i] = matX[i] * Mbeta + Mpsi[Uindex[i]] * sqrt(YMpsi[2,2]);
-        Yhat[i] = matM[i] * Ybeta + Ypsi[Uindex[i]] * sqrt(YMpsi[1,1]);
+        Mhat[i] = matX[i] * Mbeta + YMpsi[Uindex[i],2];
+        Yhat[i] = matM[i] * Ybeta + YMpsi[Uindex[i],1];
       }
       M ~ bernoulli_logit(Mhat);
       Y ~ bernoulli_logit(Yhat);
@@ -3198,8 +3219,8 @@ GLMmediationMCMCbinYbinM = function(Y, M, Z, C, V, Uindex,
   
   stanfit = stan(model_code = stan_code, data = stan_data, 
                  iter = gibbs_total, warmup = gibbs_burnin, thin = gibbs_thin,
-                 pars = c("Ybeta", "Ypsi", "Mbeta", "Mpsi", "YMpsi"),
-                 chains = 1)
+                 pars = c("Ybeta", "Mbeta", "YMpsi", "covYMpsi"),
+                 control = list(max_treedepth = 15), chains = 1)
   
   extractfit = rstan::extract(stanfit)
   
@@ -3211,6 +3232,7 @@ GLMmediationMCMCbinYbinM = function(Y, M, Z, C, V, Uindex,
   MbetaLists = list(NA)
   MpsiLists  = list(NA)
   YMpsiLists = list(NA)
+  covYMpsiLists = list(NA)
   # End initial values ------------------------------------------------------------
   for (gibbs_reps in 1:n_MCMC) {
     # Save all parameters
@@ -3219,6 +3241,7 @@ GLMmediationMCMCbinYbinM = function(Y, M, Z, C, V, Uindex,
     MbetaLists[[gibbs_reps]] = extractfit$Mbeta[gibbs_reps,]
     MpsiLists[[gibbs_reps]]  = extractfit$Mpsi[gibbs_reps,]
     YMpsiLists[[gibbs_reps]] = extractfit$YMpsi[gibbs_reps,,]
+    covYMpsiLists[[gibbs_reps]] = extractfit$covYMpsi[gibbs_reps,,]
   }
   
   # constants
@@ -3234,7 +3257,8 @@ GLMmediationMCMCbinYbinM = function(Y, M, Z, C, V, Uindex,
                         YpsiLists = YpsiLists,
                         MbetaLists = MbetaLists,
                         MpsiLists = MpsiLists,
-                        YMpsiLists = YMpsiLists)
+                        YMpsiLists = YMpsiLists,
+                        covYMpsiLists = covYMpsiLists)
   
   # MCMC results
   object = list(obsdata = obsdata,
@@ -3256,45 +3280,155 @@ GLMmediation = function(Y, M, Z, C, V, Uindex,
   if (typeY == "continuous") {
     if (typeM == "continuous") {
       object = GLMmediationMCMCconYconM(Y, M, Z, C, V, Uindex,
-                                        gibbs_iter, 
-                                        gibbs_burnin, 
+                                        gibbs_iter,
+                                        gibbs_burnin,
                                         gibbs_thin)
     } else if (typeM == "binary") {
       object = GLMmediationMCMCconYbinM(Y, M, Z, C, V, Uindex,
-                                        gibbs_iter = gibbs_iter, 
-                                        gibbs_burnin = gibbs_burnin, 
+                                        gibbs_iter = gibbs_iter,
+                                        gibbs_burnin = gibbs_burnin,
                                         gibbs_thin = gibbs_thin,
                                         modelM = modelM)
     } else if (typeM == "ordinal") {
       object = GLMmediationMCMCconYordM(Y, M, Z, C, V, Uindex,
-                                        gibbs_iter = gibbs_iter, 
-                                        gibbs_burnin = gibbs_burnin, 
+                                        gibbs_iter = gibbs_iter,
+                                        gibbs_burnin = gibbs_burnin,
                                         gibbs_thin = gibbs_thin)
     } else if (typeM == "count") {
       object = GLMmediationMCMCconYcouM(Y, M, Z, C, V, Uindex,
-                                        gibbs_iter = gibbs_iter, 
-                                        gibbs_burnin = gibbs_burnin, 
+                                        gibbs_iter = gibbs_iter,
+                                        gibbs_burnin = gibbs_burnin,
                                         gibbs_thin = gibbs_thin)
     }
   } else if (typeY == "binary") {
     if (typeM == "continuous") {
-      # 
+      #
     } else if (typeM == "binary") {
       object = GLMmediationMCMCbinYbinM(Y, M, Z, C, V, Uindex,
-                                        gibbs_iter = gibbs_iter, 
-                                        gibbs_burnin = gibbs_burnin, 
+                                        gibbs_iter = gibbs_iter,
+                                        gibbs_burnin = gibbs_burnin,
                                         gibbs_thin = gibbs_thin)
     } else if (typeM == "ordinal") {
-      # 
+      #
     } else if (typeM == "count") {
-      # 
+      #
     }
   }
   # else if (typeY == "ordinal") ㄴ{
-  #   
+  #
   # } else if (typeY == "count") {
-  #   
+  #
   # }
+  
+  # Z0 = 0
+  # which_Z0 = which(Z == Z0)
+  # Y0 = Y[which_Z0]
+  # M0 = M[which_Z0]
+  # C0 = C[which_Z0,]
+  # V0 = V[which_Z0,]
+  # Uindex0 = Uindex[which_Z0]
+  # matX0 = cbind(C0, V0)
+  # matM0 = cbind(M0, C0, V0)
+  # N0 = length(Y0)
+  # uniqueUindex0 = sort(unique(Uindex0))
+  # J0 = length(uniqueUindex0)
+  # Uindex0 = apply(sapply(1:J0, function(l) ifelse(Uindex0==uniqueUindex0[l],l,0)),1,sum)
+  # n_j0 = as.numeric(table(Uindex0))
+  # order_Uindex0 = order(Uindex0)
+  # Y0 = Y0[order_Uindex0]
+  # M0 = M0[order_Uindex0]
+  # C0 = C0[order_Uindex0,]
+  # V0 = V0[order_Uindex0,]
+  # Uindex0 = Uindex0[order_Uindex0]
+  # 
+  # Z1 = 1
+  # which_Z1 = which(Z == Z1)
+  # Y1 = Y[which_Z1]
+  # M1 = M[which_Z1]
+  # C1 = C[which_Z1,]
+  # V1 = V[which_Z1,]
+  # Uindex1 = Uindex[which_Z1]
+  # matX1 = cbind(C1, V1)
+  # matM1 = cbind(M1, C1, V1)
+  # N1 = length(Y1)
+  # uniqueUindex1 = sort(unique(Uindex1))
+  # J1 = length(uniqueUindex1)
+  # Uindex1 = apply(sapply(1:J1, function(l) ifelse(Uindex1==uniqueUindex1[l],l,0)),1,sum)
+  # n_j1 = as.numeric(table(Uindex1))
+  # order_Uindex1 = order(Uindex1)
+  # Y1 = Y1[order_Uindex1]
+  # M1 = M1[order_Uindex1]
+  # C1 = C1[order_Uindex1,]
+  # V1 = V1[order_Uindex1,]
+  # Uindex1 = Uindex1[order_Uindex1]
+  # 
+  # if (typeY == "continuous") {
+  #   if (typeM == "continuous") {
+  #     object0 = GLMmediationMCMCconYconM(Y0, M0, Z0, C0, V0, Uindex0,
+  #                                        gibbs_iter, 
+  #                                        gibbs_burnin, 
+  #                                        gibbs_thin)
+  #     object1 = GLMmediationMCMCconYconM(Y1, M1, Z1, C1, V1, Uindex1,
+  #                                        gibbs_iter, 
+  #                                        gibbs_burnin, 
+  #                                        gibbs_thin)
+  #   } else if (typeM == "binary") {
+  #     object0 = GLMmediationMCMCconYbinM(Y0, M0, Z0, C0, V0, Uindex0,
+  #                                        gibbs_iter = gibbs_iter, 
+  #                                        gibbs_burnin = gibbs_burnin, 
+  #                                        gibbs_thin = gibbs_thin,
+  #                                        modelM = modelM)
+  #     object1 = GLMmediationMCMCconYbinM(Y1, M1, Z1, C1, V1, Uindex1,
+  #                                        gibbs_iter = gibbs_iter, 
+  #                                        gibbs_burnin = gibbs_burnin, 
+  #                                        gibbs_thin = gibbs_thin,
+  #                                        modelM = modelM)
+  #   } else if (typeM == "ordinal") {
+  #     object0 = GLMmediationMCMCconYordM(Y0, M0, Z0, C0, V0, Uindex0,
+  #                                        gibbs_iter = gibbs_iter, 
+  #                                        gibbs_burnin = gibbs_burnin, 
+  #                                        gibbs_thin = gibbs_thin)
+  #     object1 = GLMmediationMCMCconYordM(Y1, M1, Z1, C1, V1, Uindex1,
+  #                                        gibbs_iter = gibbs_iter, 
+  #                                        gibbs_burnin = gibbs_burnin, 
+  #                                        gibbs_thin = gibbs_thin)
+  #   } else if (typeM == "count") {
+  #     object0 = GLMmediationMCMCconYcouM(Y0, M0, Z0, C0, V0, Uindex0,
+  #                                        gibbs_iter = gibbs_iter, 
+  #                                        gibbs_burnin = gibbs_burnin, 
+  #                                        gibbs_thin = gibbs_thin)
+  #     object1 = GLMmediationMCMCconYcouM(Y1, M1, Z1, C1, V1, Uindex1,
+  #                                        gibbs_iter = gibbs_iter, 
+  #                                        gibbs_burnin = gibbs_burnin, 
+  #                                        gibbs_thin = gibbs_thin)
+  #   }
+  # } else if (typeY == "binary") {
+  #   if (typeM == "continuous") {
+  #     # 
+  #   } else if (typeM == "binary") {
+  #     object0 = GLMmediationMCMCbinYbinM(Y0, M0, Z0, C0, V0, Uindex0,
+  #                                        gibbs_iter = gibbs_iter, 
+  #                                        gibbs_burnin = gibbs_burnin, 
+  #                                        gibbs_thin = gibbs_thin)
+  #     object1 = GLMmediationMCMCbinYbinM(Y1, M1, Z1, C1, V1, Uindex1,
+  #                                        gibbs_iter = gibbs_iter, 
+  #                                        gibbs_burnin = gibbs_burnin, 
+  #                                        gibbs_thin = gibbs_thin)
+  #   } else if (typeM == "ordinal") {
+  #     # 
+  #   } else if (typeM == "count") {
+  #     # 
+  #   }
+  # }
+  # # else if (typeY == "ordinal") ㄴ{
+  # #   
+  # # } else if (typeY == "count") {
+  # #   
+  # # }
+  # 
+  # object = list(object0 = object0, object1 = object1)
+  # object$modelM = modelM
+  # class(object) = "rGLMmediation"
   
   return(object)
 }

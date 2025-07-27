@@ -33,7 +33,7 @@ sourceCpp("TSBBmediation_source_cpp.cpp")
 # -----------------------------------------------------------------------------
 # Scenario
 Scenario = 7
-run_ID = 50
+run_ID = 1
 set.seed(run_ID)
 
 {
@@ -340,20 +340,20 @@ set.seed(run_ID)
   # df1 = data.frame(Y = Y1, M = M1, Z = Z1, C = C1, V = V1, Uindex = Uindex1, matX = matX1, matM = matM1)
 }
 
-gibbs_thin = 1e1
-gibbs_iter = 2e3
-gibbs_burnin = 2e4
+# gibbs_thin = 1e1
+# gibbs_iter = 2e3
+# gibbs_burnin = 2e4
 
 gibbs_thin = 1e1
-gibbs_iter = 2e2
-gibbs_burnin = 2e3
+gibbs_iter = 1e2
+gibbs_burnin = 1e3
 
 # sparse = TRUE
 sparse = FALSE
 # ntree = 20
-# ntree = 50
+ntree = 50
 # ntree = 100
-ntree = 200
+# ntree = 200
 # ntree = 500
 # ntree = 2000
 

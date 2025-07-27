@@ -1,4 +1,4 @@
- # -----------------------------------------------------------------------------
+# -----------------------------------------------------------------------------
 # -----------------------------------------------------------------------------
 # -----------------------------------------------------------------------------
 # Load R packages
@@ -9,8 +9,8 @@ library(RcppArmadillo)
 library(rBARTmediation)
 # library(dbarts)
 library(rstan)
-options(mc.cores = parallel::detectCores())
-rstan_options(auto_write = TRUE)
+# options(mc.cores = parallel::detectCores())
+# rstan_options(auto_write = TRUE)
 # Sys.setenv(USE_CXX14 = 1)
 
 # -----------------------------------------------------------------------------
@@ -32,7 +32,7 @@ sourceCpp("TSBBmediation_source_cpp.cpp")
 # -----------------------------------------------------------------------------
 # -----------------------------------------------------------------------------
 # Scenario
-Scenario = 1
+Scenario = 7
 run_ID = 1
 set.seed(run_ID)
 
@@ -242,28 +242,22 @@ set.seed(run_ID)
   # ------------------------------------------------------------------------------
   # ------------------------------------------------------------------------------
   # ------------------------------------------------------------------------------
-  # Define the number of clusters
-  uniqueUindex = sort(unique(Uindex))
-  J = length(uniqueUindex)
-  Uindex = apply(sapply(1:J, function(l) ifelse(Uindex==uniqueUindex[l],l,0)),1,sum)
-  
-  # Define the number of observations
-  N = length(Y)
-  
-  # Define the number of observations for each cluster
-  n_j = as.numeric(table(Uindex))
-  
-  # Data reordering
-  order_Uindex = order(Uindex)
-  Y = Y[order_Uindex]
-  M = M[order_Uindex]
-  Z = Z[order_Uindex]
-  C = C[order_Uindex,]
-  V = V[order_Uindex,]
-  Uindex = Uindex[order_Uindex]
-  
-  colnames(C) = paste0("C",1:ncol(C))
-  colnames(V) = paste0("V",1:ncol(V))
+  # ------------------------------------------------------------------------------
+  uniqueUindex0 = sort(unique(Uindex[Z==0]))
+  J0 = length(uniqueUindex0)
+  uniqueUindex1 = sort(unique(Uindex[Z==1]))
+  J1 = length(uniqueUindex1)
+  UindexNEW = numeric(N)
+  for (j in 1:J0) {
+    whichj = which(Uindex == uniqueUindex0[j])
+    UindexNEW[whichj] = j + J
+  }
+  for (j in 1:J1) {
+    whichj = which(Uindex == uniqueUindex1[j])
+    UindexNEW[whichj] = j + J0 + J
+  }
+  UindexNEW = UindexNEW - J
+  Uindex = UindexNEW
   
   # Define the number of clusters
   uniqueUindex = sort(unique(Uindex))
@@ -287,10 +281,6 @@ set.seed(run_ID)
   
   colnames(C) = paste0("C",1:ncol(C))
   colnames(V) = paste0("V",1:ncol(V))
-  
-  matX = cbind(Z, C, V)
-  matM = cbind(M, Z, C, V)
-  # df = data.frame(Y = Y, M = M, Z = Z, C = C, V = V, Uindex = Uindex, matX = matX, matM = matM)
   
   # ------------------------------------------------------------------------------
   # ------------------------------------------------------------------------------
@@ -340,9 +330,9 @@ set.seed(run_ID)
   # df1 = data.frame(Y = Y1, M = M1, Z = Z1, C = C1, V = V1, Uindex = Uindex1, matX = matX1, matM = matM1)
 }
 
-gibbs_thin = 1e0
-gibbs_iter = 2e1
-gibbs_burnin = 2e2
+gibbs_thin = 1e1
+gibbs_iter = 2e3
+gibbs_burnin = 2e4
 
 # gibbs_thin = 1e1
 # gibbs_iter = 2e2
@@ -354,6 +344,7 @@ sparse = FALSE
 # ntree = 50
 # ntree = 100
 ntree = 200
+# ntree = 300
 # ntree = 500
 # ntree = 2000
 
@@ -364,14 +355,22 @@ c(E_true[1]-E_true[2],E_true[2]-E_true[3],E_true[1]-E_true[3])
 # meanYj = sapply(1:J, function(l) mean(Y[Uindex==l]))
 # aY = sapply(1:N, function(i) Y[i] - meanYj[Uindex[i]])
 
+# gibbs_thin = 1e1
+# gibbs_iter = 1e5
+# gibbs_burnin = 1e5
+# gibbs_iter = gibbs_iter/gibbs_thin
+
 # -----------------------------------------------------------------------------
 # -----------------------------------------------------------------------------
 # -----------------------------------------------------------------------------
 # -----------------------------------------------------------------------------
+# -----------------------------------------------------------------------------
+source("TSBBmediation_source_r.R")
+sourceCpp("TSBBmediation_source_cpp.cpp")
 # rBARTmediation
 BARTfit0 = rBARTmediation(Y0, M0, C0, V0, Uindex0,
                           typeY = Ydist, typeM = Mdist, 
-                          ndpost=gibbs_iter, nskip=gibbs_burnin, keepevery=gibbs_thin, 
+                          ndpost=gibbs_iter, nskip=gibbs_burnin, keepevery=gibbs_thin,
                           ntree=ntree, sparse = sparse)
 
 # rBARTmediation
@@ -383,6 +382,11 @@ BARTfit1 = rBARTmediation(Y1, M1, C1, V1, Uindex1,
 BARTfit = list(object0 = BARTfit0, object1 = BARTfit1)
 class(BARTfit) = "rBARTmediation"
 
+c(BARTfit$object0$B_uM,BARTfit$object0$B_uY,
+  BARTfit$object1$B_uM,BARTfit$object1$B_uY)
+
+source("TSBBmediation_source_r.R")
+sourceCpp("TSBBmediation_source_cpp.cpp")
 # BB-BB
 rBARTmediationresultBBmediationPOST = BBmediationPOST(BARTfit, C, V, Uindex, esttype, saveall, T)
 (rBARTmediationBBtableNIE = rBARTmediationresultBBmediationPOST$NIE_result_mc)
@@ -401,6 +405,8 @@ rBARTmediationresultHBBmediationPOST = HBBmediationPOST(BARTfit, C, V, Uindex, e
 # (rBARTmediationTSBBtableNDE = rBARTmediationresultTSBBmediationPOST$NDE_result_mc)
 # (rBARTmediationTSBBtableATE = rBARTmediationresultTSBBmediationPOST$ATE_result_mc)
 
+source("TSBBmediation_source_r.R")
+sourceCpp("TSBBmediation_source_cpp.cpp")
 rBARTmediationresultTSBBmediationPOSTsim = TSBBmediationPOSTsim(BARTfit, C, V, Uindex, esttype, saveall,
                                                                 list_chi = c(1e-2, 1e-1, 1, 1e1, 1e2),
                                                                 list_zeta = c(0, 0.5, 1), T)
@@ -419,6 +425,9 @@ round(rbind(c(rBARTmediationresultBBmediationPOST$NIE_result_mc,
                   rBARTmediationresultTSBBmediationPOSTsim$ATE_result_mc)),3)
 c(E_true[1],E_true[2],E_true[3])
 c(E_true[1]-E_true[2],E_true[2]-E_true[3],E_true[1]-E_true[3])
+
+c(BARTfit$object0$B_uM,BARTfit$object0$B_uY,
+  BARTfit$object1$B_uM,BARTfit$object1$B_uY)
 
 # allinfo = c()
 # list_chi = c(1e-2, 1e-1, 1, 1e1, 1e2)
@@ -445,42 +454,13 @@ c(E_true[1]-E_true[2],E_true[2]-E_true[3],E_true[1]-E_true[3])
 #                     rBARTmediationHBBtableATE),
 #                   allinfo))
 
-# # -----------------------------------------------------------------------------
-# # -----------------------------------------------------------------------------
-# # dbarts
-# Mpost = rbart_vi(M ~ matX, df, group.by = Uindex,
-#                  n.samples = gibbs_iter, n.burn = gibbs_burnin, n.thin = gibbs_thin,
-#                  n.chains = 1, n.threads = 1)
-# Ypost = rbart_vi(Y ~ matM, df, group.by = Uindex,
-#                  n.samples = gibbs_iter, n.burn = gibbs_burnin, n.thin = gibbs_thin,
-#                  n.chains = 1, n.threads = 1)
-# rbartBARTfit = list(Yobject = Ypost, Mobject = Mpost)
-# class(rbartBARTfit) = class(Ypost)
-# 
-# # BB-BB
-# dbartresultBBmediationPOSTrbart = BBmediationPOST(rbartBARTfit, C, V, Uindex, esttype, saveall)
-# (dbartBBtableNIErbart = dbartresultBBmediationPOSTrbart$NIE_result_mc)
-# (dbartBBtableNDErbart = dbartresultBBmediationPOSTrbart$NDE_result_mc)
-# (dbartBBtableATErbart = dbartresultBBmediationPOSTrbart$ATE_result_mc)
-# 
-# # BB-HBB
-# dbartresultHBBmediationPOSTrbart = HBBmediationPOST(rbartBARTfit, C, V, Uindex, esttype, saveall)
-# (dbartHBBtableNIErbart = dbartresultHBBmediationPOSTrbart$NIE_result_mc)
-# (dbartHBBtableNDErbart = dbartresultHBBmediationPOSTrbart$NDE_result_mc)
-# (dbartHBBtableATErbart = dbartresultHBBmediationPOSTrbart$ATE_result_mc)
-# 
-# # TSBB
-# dbartresultTSBBmediationPOSTrbart = TSBBmediationPOST(rbartBARTfit, C, V, Uindex, esttype, saveall, chi = 1, zeta = 0.5)
-# (dbartTSBBtableNIErbart = dbartresultTSBBmediationPOSTrbart$NIE_result_mc)
-# (dbartTSBBtableNDErbart = dbartresultTSBBmediationPOSTrbart$NDE_result_mc)
-# (dbartTSBBtableATErbart = dbartresultTSBBmediationPOSTrbart$ATE_result_mc)
-# c(E_true[1]-E_true[2],E_true[2]-E_true[3],E_true[1]-E_true[3])
-
+# -----------------------------------------------------------------------------
+# -----------------------------------------------------------------------------
+# -----------------------------------------------------------------------------
 source("TSBBmediation_source_r.R")
 # source("TSBBmediation_source_r_includeZ.R")
 # source("TSBBmediation_source_r_excludeZ.R")
-# -----------------------------------------------------------------------------
-# -----------------------------------------------------------------------------
+
 # GLM
 GLMfit = GLMmediation(Y, M, Z, C, V, Uindex,
                       typeY = Ydist, typeM = Mdist,
@@ -549,6 +529,42 @@ c(E_true[1]-E_true[2],E_true[2]-E_true[3],E_true[1]-E_true[3])
 #                     rBARTmediationHBBtableNDE,
 #                     rBARTmediationHBBtableATE),
 #                   allinfo));allinfo
+
+# -----------------------------------------------------------------------------
+# -----------------------------------------------------------------------------
+# -----------------------------------------------------------------------------
+# -----------------------------------------------------------------------------
+
+# # -----------------------------------------------------------------------------
+# # -----------------------------------------------------------------------------
+# # dbarts
+# Mpost = rbart_vi(M ~ matX, df, group.by = Uindex,
+#                  n.samples = gibbs_iter, n.burn = gibbs_burnin, n.thin = gibbs_thin,
+#                  n.chains = 1, n.threads = 1)
+# Ypost = rbart_vi(Y ~ matM, df, group.by = Uindex,
+#                  n.samples = gibbs_iter, n.burn = gibbs_burnin, n.thin = gibbs_thin,
+#                  n.chains = 1, n.threads = 1)
+# rbartBARTfit = list(Yobject = Ypost, Mobject = Mpost)
+# class(rbartBARTfit) = class(Ypost)
+# 
+# # BB-BB
+# dbartresultBBmediationPOSTrbart = BBmediationPOST(rbartBARTfit, C, V, Uindex, esttype, saveall)
+# (dbartBBtableNIErbart = dbartresultBBmediationPOSTrbart$NIE_result_mc)
+# (dbartBBtableNDErbart = dbartresultBBmediationPOSTrbart$NDE_result_mc)
+# (dbartBBtableATErbart = dbartresultBBmediationPOSTrbart$ATE_result_mc)
+# 
+# # BB-HBB
+# dbartresultHBBmediationPOSTrbart = HBBmediationPOST(rbartBARTfit, C, V, Uindex, esttype, saveall)
+# (dbartHBBtableNIErbart = dbartresultHBBmediationPOSTrbart$NIE_result_mc)
+# (dbartHBBtableNDErbart = dbartresultHBBmediationPOSTrbart$NDE_result_mc)
+# (dbartHBBtableATErbart = dbartresultHBBmediationPOSTrbart$ATE_result_mc)
+# 
+# # TSBB
+# dbartresultTSBBmediationPOSTrbart = TSBBmediationPOST(rbartBARTfit, C, V, Uindex, esttype, saveall, chi = 1, zeta = 0.5)
+# (dbartTSBBtableNIErbart = dbartresultTSBBmediationPOSTrbart$NIE_result_mc)
+# (dbartTSBBtableNDErbart = dbartresultTSBBmediationPOSTrbart$NDE_result_mc)
+# (dbartTSBBtableATErbart = dbartresultTSBBmediationPOSTrbart$ATE_result_mc)
+# c(E_true[1]-E_true[2],E_true[2]-E_true[3],E_true[1]-E_true[3])
 
 round(rbind(c(rBARTmediationresultBBmediationPOST$NIE_result_mc,
               rBARTmediationresultBBmediationPOST$NDE_result_mc,
