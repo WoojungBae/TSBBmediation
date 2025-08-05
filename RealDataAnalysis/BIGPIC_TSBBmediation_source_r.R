@@ -1,3 +1,400 @@
+# Define function to update outcome regression coefficients
+# update_Mbetasig2 = function(a_sig2_new, b_sig2_new, 
+#                             a_beta_new, B_beta_new) {
+#   
+#   # Update the outcome regression parameters sig2
+#   sig2_prop = c(rscainvchisq_cpp(1, a_sig2_new, b_sig2_new))
+#   # Update the outcome regression parameters beta
+#   beta_prop = c(rmvn_cpp(1, a_beta_new, sig2_prop * B_beta_new))
+#   
+#   return(list(beta_par = beta_prop, sig2_par = sig2_prop))
+# }
+
+update_Mbetasig2 <- function(N, p,
+                             Y, X, 
+                             a_sig2, b_sig2, 
+                             a_beta, B_beta) {
+  # Pre-compute matrices
+  B_beta_inv <- inv_cpp(B_beta)
+  XtX <- t(X) %*% X
+  XtY <- t(X) %*% Y
+  
+  # --- Calculate posterior parameters ---
+  # Posterior for beta (conditional on sigma^2)
+  B_beta_post_inv <- B_beta_inv + XtX
+  B_beta_post <- inv_cpp(B_beta_post_inv)
+  a_beta_post <- B_beta_post %*% (B_beta_inv %*% a_beta + XtY)
+  
+  # Posterior for sigma^2
+  a_sig2_post <- a_sig2 + N
+  ssr_term <- crossprod(Y) + t(a_beta) %*% B_beta_inv %*% a_beta - t(a_beta_post) %*% B_beta_post_inv %*% a_beta_post
+  b_sig2_post <- (a_sig2 * b_sig2 + ssr_term) / a_sig2_post
+  
+  # --- Sample new sigma^2 then new beta ---
+  sig2_new <- c(rscainvchisq_cpp(1, a_sig2_post, b_sig2_post))
+  beta_new <- c(rmvn_cpp(1, a_beta_post, sig2_new * B_beta_post))
+  
+  return(list(beta_par = as.vector(beta_new), sig2_par = sig2_new))
+}
+
+update_Ybetasig2 <- function(N, p, 
+                             Y, X, Uindex, 
+                             psi_curr, 
+                             a_beta, B_beta, a_sig, b_sig) {
+  # --- Step 1: Adjust Y by subtracting the current random effects ---
+  # This creates the "effective" outcome for the standard Bayesian linear regression update
+  psi_expanded <- psi_curr[Uindex]
+  Y_star <- Y - psi_expanded
+  
+  # Pre-compute matrices for efficiency
+  invB_beta <- inv_cpp(B_beta)
+  XtX <- t(X) %*% X
+  
+  # --- Step 2: Calculate posterior parameters for beta and sigma^2 ---
+  # Posterior parameters for beta (conditional on sigma^2)
+  invB_beta_post <- invB_beta + XtX
+  B_beta_post <- inv_cpp(invB_beta_post)
+  XtY_star <- t(X) %*% Y
+  a_beta_post <- B_beta_post %*% (invB_beta %*% a_beta + XtY_star)
+  # Posterior parameters for sigma^2
+  a_sig_post <- a_sig + N
+  # Calculate the sum of squared errors term for the scale parameter
+  ssr_term <- crossprod(Y_star) + t(a_beta) %*% invB_beta %*% a_beta - t(a_beta_post) %*% invB_beta_post %*% a_beta_post
+  b_sig_post <- (a_sig * b_sig + ssr_term) / a_sig_post
+  
+  # --- Step 3: Sample new sigma^2 then new beta ---
+  # Sample sigma^2 from its marginal posterior (Scaled-Inverse-Chi-Square)
+  sig2_new <- c(rscainvchisq_cpp(1, a_sig_post, b_sig_post))
+  # Sample beta from its conditional posterior (Normal), using the new sigma^2
+  beta_new <- rmvn_cpp(1, a_beta_post, sig2_new * B_beta_post)
+  
+  return(list(beta_par = as.vector(beta_new), sig2_par = sig2_new))
+}
+
+update_Ypsi <- function(J, n_j, 
+                        Y, X, Uindex, 
+                        beta_curr, sig2_curr, tau2_curr, 
+                        a_tau2, b_tau2) {
+  
+  # --- Part 1: Update psi (from the old update_psi function) ---
+  residuals <- Y - (X %*% beta_curr)
+  sum_resid_j <- tapply(residuals, Uindex, FUN = sum)
+  # Posterior variance for each psi_j depends on the CURRENT tau2_par
+  psi_var_post <- 1 / ((1 / tau2_curr) + (n_j / sig2_curr))
+  # Posterior mean for each psi_j
+  psi_mean_post <- psi_var_post * (sum_resid_j / sig2_curr)
+  # Sample a new vector for psi
+  psi_new <- rnorm(J, mean = psi_mean_post, sd = sqrt(psi_var_post))
+  
+  # --- Part 2: Update tau2_psi (from the old update_tau2 function) ---
+  # Calculate posterior parameters for tau2_psi
+  a_tau2_post <- a_tau2 + J
+  tau2_sum_sq <- sum(psi_new^2) # Using the new psi
+  b_tau2_post <- (a_tau2 * b_tau2 + tau2_sum_sq) / a_tau2_post
+  # Sample a new value for tau_tau2^2
+  tau2_new <- c(rscainvchisq_cpp(1, a_tau2_post, b_tau2_post))
+  
+  # --- Return both new values ---
+  return(list(psi_par = psi_new, tau2_par = tau2_new))
+}
+
+# Define function to fit the EDP model
+GLMclusterlevelM = function(M, Z, C, V, 
+                            gibbs_iter = 2e4, gibbs_burnin = 2e4, gibbs_thin = 100){
+  # V = Vjmat
+  # C = Cjmat
+  
+  # Define of constants
+  
+  # Define the number of observations for each dataset
+  N = length(M)
+  
+  # Define interation check
+  iter_check = floor(gibbs_iter/20)
+  
+  # Define the number of Markov Chain Monte Carlo (MCMC) draws in Gibbs Sampler
+  gibbs_total = gibbs_iter + gibbs_burnin
+  
+  # Set initial values ----------------------------------------------------------
+  # with Z ----------------------------------------------------------------------
+  matX = cbind(1, Z, C, V)
+  
+  # without Z -------------------------------------------------------------------
+  # matX = cbind(1, C, V)
+  
+  # Define the number of observations and the number of parameters
+  N = length(M)
+  pm = ncol(matX)
+  
+  matXtX = t(matX) %*% matX
+  # INVmatXtX = inv_cpp(matXtX)
+  
+  # Parameters in mediator regression
+  # for mediator regression coefficients
+  Mlm <- lm(M ~ matX - 1)
+  a_Mbeta <- ifelse(is.na(coef(Mlm)), 0, coef(Mlm))
+  var_Mbeta <- sum((M - matX %*% a_Mbeta)^{2})/ifelse(Mlm$df.residual == 0, 1, N - pm)
+  # a_Mbeta = rep(0, pm)
+  B_Mbeta = var_Mbeta * diag(1, pm)
+  Binv_Mbeta = inv_cpp(B_Mbeta)
+  aBinv_Mbeta = Binv_Mbeta %*% a_Mbeta
+  # a_Mbeta = numeric(pm)
+  # B_Mbeta = diag(pm)
+  # c_Mbeta = N/5
+  # B_Mbeta = c_Mbeta * B_Mbeta
+  # Binv_Mbeta = diag(pm)/c_Mbeta
+  # aBinv_Mbeta = Binv_Mbeta %*% a_Mbeta
+  
+  # for mediator regression coefficients
+  a_Msig2 = 1
+  b_Msig2 = var_Mbeta/a_Msig2
+  
+  # # Update values of etas in mediator regressions  
+  # SSE_Msig2 = M - matX %*% a_Mbeta
+  # a_Msig2_new = a_Msig2 + N
+  # b_Msig2_new = a_Msig2 * b_Msig2 + t(SSE_Msig2) %*% inv_cpp(matX %*% B_Mbeta %*% t(matX) + diag(1, N)) %*% SSE_Msig2
+  # a_Mbeta_new = aBinv_Mbeta + t(matX) %*% M
+  # B_Mbeta_new = inv_cpp(Binv_Mbeta + matXtX)
+  # # B_Mbeta_new = inv_cpp(Binv_Mbeta + INVmatXtX)
+  # # cholB_Mbeta_new = chol(B_Mbeta_new)
+  
+  # 
+  # Mregression_list = update_Mbetasig2(a_Msig2_new, b_Msig2_new, a_Mbeta_new, B_Mbeta_new)
+  Mregression_list = update_Mbetasig2(N, pm,
+                                      M, matX, 
+                                      a_Msig2, b_Msig2, 
+                                      a_Mbeta, B_Mbeta)
+  Msig2Pars = Mregression_list$sig2_par
+  MbetaPars = Mregression_list$beta_par
+  
+  # 
+  MbetaLists = list(NA)
+  Msig2Lists = list(NA)
+  
+  # Make vectors to store draws from Gibbs Sampler
+  n_store = floor(gibbs_iter/gibbs_thin)
+  
+  # End initial values ------------------------------------------------------------
+  
+  # Start sampling  ------------------------------------------------------------
+  count_it = 1
+  for (gibbs_reps in 1:gibbs_total) {
+    # Start update of all parameters -------------------------------------------
+    # Mregression_list = update_Mbetasig2(a_Msig2_new, b_Msig2_new, a_Mbeta_new, B_Mbeta_new)
+    Mregression_list = update_Mbetasig2(N, pm,
+                                        M, matX, 
+                                        a_Msig2, b_Msig2, 
+                                        a_Mbeta, B_Mbeta)
+    Msig2Pars = Mregression_list$sig2_par
+    MbetaPars = Mregression_list$beta_par
+    # End update of all parameters ---------------------------------------------
+    
+    if (gibbs_reps < gibbs_burnin) {
+    } else if (gibbs_reps == gibbs_burnin) {
+      cat("Bur-In End",gibbs_reps,"Time:",date(),"\n")
+    } else if (gibbs_reps > gibbs_burnin) {
+      if (gibbs_reps %% gibbs_thin == 0) {
+        MbetaLists[[count_it]] = MbetaPars
+        Msig2Lists[[count_it]] = Msig2Pars
+        count_it = count_it + 1
+      }
+      
+      if (gibbs_reps %% iter_check == 0) {
+        cat("Gibbs Iteration",(gibbs_reps-gibbs_burnin),"(",
+            (gibbs_reps-gibbs_burnin)/gibbs_iter*100,"%)","Time:",date(),"\n")
+      }
+    }
+  }
+  quantile(sqrt(unlist(Msig2Lists)))
+  
+  # constants
+  constants = list(N = N, pm = pm, n_MCMC = n_store)
+  
+  # priors
+  priors = list(a_Msig2 = a_Msig2, b_Msig2 = b_Msig2, 
+                a_Mbeta = a_Mbeta, B_Mbeta = B_Mbeta)
+  
+  # MCMC Posteriors
+  MCMCposteriors = list(MbetaLists = MbetaLists,
+                        Msig2Lists = Msig2Lists)
+  
+  # MCMC results
+  MCMCresult = list(priors = priors,
+                    constants = constants,
+                    MCMCposteriors = MCMCposteriors)
+  attr(MCMCresult, 'class') = "GLM"
+  
+  return(MCMCresult)
+}
+
+# Define function to fit the EDP model
+GLMindividuallevelY = function(Y, M, Z, C, V, Uindex,
+                               gibbs_iter = 2e4, gibbs_burnin = 2e4, gibbs_thin = 100){
+  
+  # Define the number of clusters
+  uniqueUindex = sort(unique(Uindex))
+  J = length(uniqueUindex)
+  Uindex = apply(sapply(1:J, function(l) ifelse(Uindex==uniqueUindex[l],l,0)),1,sum)
+  
+  # Define the number of observations
+  N = length(Y)
+  
+  # Define the number of observations for each cluster
+  n_j = as.numeric(table(Uindex))
+  
+  # Data reordering
+  order_Uindex = order(Uindex)
+  Y = Y[order_Uindex]
+  M = M[order_Uindex]
+  Z = Z[order_Uindex]
+  C = C[order_Uindex,]
+  V = V[order_Uindex,]
+  Uindex = Uindex[order_Uindex]
+  
+  # Define interation check
+  iter_check = floor(gibbs_iter/20)
+  
+  # Define the number of Markov Chain Monte Carlo (MCMC) draws in Gibbs Sampler
+  gibbs_total = gibbs_iter + gibbs_burnin
+  
+  # Set initial values ----------------------------------------------------------
+  # with Z ----------------------------------------------------------------------
+  matM = cbind(1, M, Z, C, V)
+  
+  # without Z -------------------------------------------------------------------
+  # matM = cbind(1, C, V)
+  
+  # Define the number of observations and the number of parameters
+  N = length(M)
+  py = ncol(matM)
+  
+  matMtM = t(matM) %*% matM
+  INVmatMtM = inv_cpp(matMtM)
+  
+  # Parameters in mediator regression
+  # for mediator regression coefficients
+  Ylm <- lm(Y ~ matM - 1)
+  a_Ybeta <- ifelse(is.na(coef(Ylm)), 0, coef(Ylm))
+  var_Ybeta <- sum((Y - matM %*% a_Ybeta)^{2})/ifelse(Ylm$df.residual == 0, 1, N - py)
+  # a_Ybeta = rep(0, py)
+  B_Ybeta = var_Ybeta * diag(1, py)
+  Binv_Ybeta = inv_cpp(B_Ybeta)
+  aBinv_Ybeta = Binv_Ybeta %*% a_Ybeta
+  # a_Ybeta = numeric(py)
+  # B_Ybeta = diag(py)
+  # c_Ybeta = N/5
+  # B_Ybeta = c_Ybeta * B_Ybeta
+  # Binv_Ybeta = diag(py)/c_Ybeta
+  # aBinv_Ybeta = Binv_Ybeta %*% a_Ybeta
+  
+  # for mediator regression coefficients
+  a_Ysig2 = 1
+  b_Ysig2 = var_Ybeta/a_Ysig2
+  
+  # # Update values of etas in mediator regressions  
+  # SSE_Ysig2 = Y - matM %*% a_Ybeta
+  # a_Ysig2_new = a_Ysig2 + N
+  # b_Ysig2_new = a_Ysig2 * b_Ysig2 + t(SSE_Ysig2) %*% inv_cpp(matM %*% B_Ybeta %*% t(matM) + diag(1, N)) %*% SSE_Ysig2
+  # a_Ybeta_new = aBinv_Ybeta + t(matM) %*% M
+  # B_Ybeta_new = inv_cpp(Binv_Ybeta + INVmatMtM)
+  # # cholB_Ybeta_new = chol(B_Ybeta_new)
+  
+  # 
+  a_Ytau2 = 1
+  b_Ytau2 = 1
+  
+  # 
+  Y_tau2_init = c(rscainvchisq_cpp(1, a_Ytau2, b_Ytau2))
+  Ypsi_init = rnorm(J, 0, Y_tau2_init)
+  
+  # 
+  Yregression_list = update_Ybetasig2(N, py, 
+                                      Y, matM, Uindex, 
+                                      Ypsi_init, 
+                                      a_Ybeta, B_Ybeta, a_Ysig2, b_Ysig2)
+  Ysig2Pars = Yregression_list$sig2_par
+  YbetaPars = Yregression_list$beta_par
+  
+  Yrandomeffect_list = update_Ypsi(J, n_j, 
+                                   Y, matM, Uindex, 
+                                   YbetaPars, Ysig2Pars, Y_tau2_init,
+                                   a_Ytau2, b_Ytau2)
+  Ytau2Pars = Yrandomeffect_list$tau2_par
+  YpsiPars  = Yrandomeffect_list$psi_par
+  
+  # 
+  Ysig2Lists = list(NA)
+  YbetaLists = list(NA)
+  Ytau2Lists = list(NA)
+  YpsiLists = list(NA)
+  
+  # Make vectors to store draws from Gibbs Sampler
+  n_store = floor(gibbs_iter/gibbs_thin)
+  
+  # End initial values ------------------------------------------------------------
+  
+  # Start sampling  ------------------------------------------------------------
+  count_it = 1
+  for (gibbs_reps in 1:gibbs_total) {
+    # Start update of all parameters -------------------------------------------
+    Yregression_list = update_Ybetasig2(N, py, 
+                                        Y, matM, Uindex, 
+                                        YpsiPars, 
+                                        a_Ybeta, B_Ybeta, a_Ysig2, b_Ysig2)
+    Ysig2Pars = Yregression_list$sig2_par
+    YbetaPars = Yregression_list$beta_par
+    
+    Yrandomeffect_list = update_Ypsi(J, n_j,
+                                     Y, matM, Uindex, 
+                                     YbetaPars, Ysig2Pars, Ytau2Pars,
+                                     a_Ytau2, b_Ytau2)
+    Ytau2Pars = Yrandomeffect_list$tau2_par
+    YpsiPars  = Yrandomeffect_list$psi_par
+    # End update of all parameters ---------------------------------------------
+    
+    if (gibbs_reps < gibbs_burnin) {
+    } else if (gibbs_reps == gibbs_burnin) {
+      cat("Bur-In End",gibbs_reps,"Time:",date(),"\n")
+    } else if (gibbs_reps > gibbs_burnin) {
+      if (gibbs_reps %% gibbs_thin == 0) {
+        Ysig2Lists[[count_it]] = Ysig2Pars
+        YbetaLists[[count_it]] = YbetaPars
+        Ytau2Lists[[count_it]] = Ytau2Pars
+        YpsiLists[[count_it]] = YpsiPars
+        count_it = count_it + 1
+      }
+      
+      if (gibbs_reps %% iter_check == 0) {
+        cat("Gibbs Iteration",(gibbs_reps-gibbs_burnin),"(",
+            (gibbs_reps-gibbs_burnin)/gibbs_iter*100,"%)","Time:",date(),"\n")
+      }
+    }
+  }
+  
+  # constants
+  constants = list(N = N, J = J, n_j = n_j, py = py, 
+                   n_MCMC = n_store)
+  
+  # priors
+  priors = list(a_Ysig2 = a_Ysig2, b_Ysig2 = b_Ysig2, 
+                a_Ybeta = a_Ybeta, B_Ybeta = B_Ybeta,
+                a_Ytau2, b_Ytau2)
+  
+  # MCMC Posteriors
+  MCMCposteriors = list(YbetaLists = YbetaLists,
+                        Ysig2Lists = Ysig2Lists,
+                        Ytau2Lists = Ytau2Lists,
+                        YpsiLists = YpsiLists)
+  
+  # MCMC results
+  MCMCresult = list(priors = priors,
+                    constants = constants,
+                    MCMCposteriors = MCMCposteriors)
+  attr(MCMCresult, 'class') = "rGLM"
+  
+  return(MCMCresult)
+}
+
 # -----------------------------------------------------------------------------
 # Define functions ------------------------------------------------------------
 # -----------------------------------------------------------------------------
@@ -519,7 +916,7 @@ BBmediationPOST = function(objectY, # object from rBART
   # Constants
   N = nrow(C.test)
   J = length(unique(Uindex))
-  n_MCMC = nrow(objectY$ㅛ.draw)
+  n_MCMC = nrow(objectY$u.draw)
   n_j = as.numeric(table(Uindex))
   
   # matX to predict at
@@ -766,7 +1163,7 @@ HBBmediationPOST = function(objectY, # object from rBART
   # Constants
   N = nrow(C.test)
   J = length(unique(Uindex))
-  n_MCMC = nrow(objectY$ㅛ.draw)
+  n_MCMC = nrow(objectY$u.draw)
   n_j = as.numeric(table(Uindex))
   
   # matX to predict at
@@ -1019,7 +1416,7 @@ TSBBmediationPOST = function(objectY, # object from rBART
   
   N = nrow(C.test)
   J = length(unique(Uindex))
-  n_MCMC = nrow(objectY$ㅛ.draw)
+  n_MCMC = nrow(objectY$u.draw)
   n_j = as.numeric(table(Uindex))
   p.test = ncol(C.test) + ncol(V.test)
   NJ = N * J
@@ -1746,7 +2143,7 @@ CcondTSBBmediationPOST = function(objectY, # object from rBART
   
   N = nrow(C.test)
   J = length(unique(Uindex))
-  n_MCMC = nrow(objectY$ㅛ.draw)
+  n_MCMC = nrow(objectY$u.draw)
   n_j = as.numeric(table(Uindex))
   p.test = ncol(C.test) + ncol(V.test)
   NJ = N * J
@@ -2071,7 +2468,7 @@ VcondTSBBmediationPOST = function(objectY, # object from rBART
   
   N = nrow(C.test)
   J = length(unique(Uindex))
-  n_MCMC = nrow(objectY$ㅛ.draw)
+  n_MCMC = nrow(objectY$u.draw)
   n_j = as.numeric(table(Uindex))
   p.test = ncol(C.test) + ncol(V.test)
   NJ = N * J
@@ -3161,3 +3558,869 @@ GLMmediation = function(Y, M, Z, C, V, Uindex,
 # -----------------------------------------------------------------------------
 # End function definitions ----------------------------------------------------
 # -----------------------------------------------------------------------------
+
+BBmediationPOST = function(object = NULL, # object from rBARTmediation, rBART, BART, rGLM, GLM
+                           C.test  = NULL,	# matrix C to predict at
+                           V.test  = NULL,	# matrix V to predict at
+                           Cj.test = NULL,	# matrix Cj to predict at
+                           Vj.test = NULL,	# matrix Vj to predict at
+                           Uindex  = NULL,
+                           esttype = "mean",
+                           saveall = FALSE,
+                           CE = TRUE){
+  # objectY = BARTfitY
+  # objectY = GLMfitY
+  # objectM = BARTfitM
+  # objectM = GLMfitM
+  # C.test = Cmat
+  # V.test = Vmat
+  # Cj.test = Cjmat
+  # Vj.test = Vjmat[,6:7]
+  # Uindex = Uindex
+  
+  objectY = object$objectY
+  objectM = object$objectM
+  
+  # Constants
+  N = nrow(C.test)
+  J = length(unique(Uindex))
+  n_j = as.numeric(table(Uindex))
+  
+  # 
+  mc.cores = 1
+  
+  # Significance Level alpha
+  level = 0.05
+  quantile_alpha = c(level/2,1-level/2)
+  
+  # 
+  z0 = 0
+  z1 = 1
+  
+  # matX to predict at
+  X.test = cbind(C.test, V.test)
+  Xj.test = cbind(Cj.test, Vj.test)
+  
+  # Parameters for individual-level confounder
+  a_pi = n_j
+  a_rho = rep(1,J)
+  
+  # -----------------------------------------------------------------------
+  if (class(objectM) == "GLM"){
+    matXjz0.test = cbind(1, z0, Xj.test)
+    matXjz1.test = cbind(1, z1, Xj.test)
+    
+    Msig2Lists = unlist(objectM$MCMCposteriors$Msig2Lists)
+    n_MCMC = length(Msig2Lists)
+    MbetaLists = matrix(unlist(objectM$MCMCposteriors$MbetaLists), nrow = n_MCMC, byrow = T)
+    
+    Mj0_mc = sapply(1:n_MCMC, function(d) rnorm(J, c(matXjz0.test %*% MbetaLists[d,]), sqrt(Msig2Lists[d])))
+    Mj1_mc = sapply(1:n_MCMC, function(d) rnorm(J, c(matXjz1.test %*% MbetaLists[d,]), sqrt(Msig2Lists[d])))
+  } else if (class(objectM) == "rGLM"){
+    # -----------------------------------------------------------------------
+  } else if (class(objectM) == "BART"){
+    # Constants
+    n_MCMC = nrow(objectM$y.draw)
+    
+    matXjz0.test = cbind(z0, Xj.test)
+    matXjz1.test = cbind(z1, Xj.test)
+    
+    # Predict M
+    objectM$treedraws$trees = gsub(",", " ", objectM$treedraws$trees)
+    Mj0_mc = t(predict(objectM, matXjz0.test))
+    Mj1_mc = t(predict(objectM, matXjz1.test))
+  } else if (class(objectM) == "rBART"){
+    # Constants
+    n_MCMC = nrow(objectM$y.draw)
+    
+    matXjz0.test = cbind(z0, Xj.test)
+    matXjz1.test = cbind(z1, Xj.test)
+    
+    # Predict M
+    objectM$treedraws$trees = gsub(",", " ", objectM$treedraws$trees)
+    Mj0_mc = t(predict(objectM, matXjz0.test))
+    Mj1_mc = t(predict(objectM, matXjz1.test))
+  }
+  
+  # -----------------------------------------------------------------------
+  if (class(objectY) == "GLM"){
+    # -----------------------------------------------------------------------
+  } else if (class(objectY) == "rGLM"){
+    Ysig2Lists = unlist(objectY$MCMCposteriors$Ysig2Lists)
+    YbetaLists = matrix(unlist(objectY$MCMCposteriors$YbetaLists), nrow = n_MCMC, byrow = T)
+    YpsiLists  = matrix(unlist(objectY$MCMCposteriors$YpsiLists), nrow = n_MCMC, byrow = T)
+    
+    Yz0m0.mc = matrix(nrow=n_MCMC, ncol=N)
+    Yz1m0.mc = matrix(nrow=n_MCMC, ncol=N)
+    Yz1m1.mc = matrix(nrow=n_MCMC, ncol=N)
+    for (d in 1:n_MCMC) {
+      matMm0z0.test = cbind(1, Mj0_mc[Uindex,d], z0, X.test)
+      matMm0z1.test = cbind(1, Mj1_mc[Uindex,d], z1, X.test)
+      matMm1z1.test = cbind(1, Mj1_mc[Uindex,d], z1, X.test)
+      
+      Yz0m0.mc[d,] = rnorm(N, c(matMm0z0.test %*% YbetaLists[d,]), sqrt(Ysig2Lists[d])) + YpsiLists[d, Uindex]
+      Yz1m0.mc[d,] = rnorm(N, c(matMm0z1.test %*% YbetaLists[d,]), sqrt(Ysig2Lists[d])) + YpsiLists[d, Uindex]
+      Yz1m1.mc[d,] = rnorm(N, c(matMm1z1.test %*% YbetaLists[d,]), sqrt(Ysig2Lists[d])) + YpsiLists[d, Uindex]
+    }
+  } else if (class(objectY) == "BART"){
+    # Constants
+    n_MCMC = nrow(objectY$y.draw)
+    
+    # sigest
+    Ysigest = objectY$sigma
+    
+    # Predict Y
+    tmpY = objectY
+    treetmp1 = tmpY$treedraws$trees
+    treetmp2 = gsub(",", " ", treetmp1)
+    treetmp3 = strsplit(treetmp1, ",")[[1]]
+    treetmp4 = paste("1",treetmp3[2],treetmp3[3],treetmp3[4])
+    
+    Yz0m0.mc = matrix(nrow=n_MCMC, ncol=N)
+    Yz1m0.mc = matrix(nrow=n_MCMC, ncol=N)
+    Yz1m1.mc = matrix(nrow=n_MCMC, ncol=N)
+    for (d in 1:n_MCMC) {
+      # d = 1
+      index = 4 + d
+      treetmp5 = paste(treetmp4, treetmp3[index])
+      tmpY$treedraws$trees = treetmp5
+      
+      M0_mc = Mj0_mc[Uindex,d]
+      M1_mc = Mj1_mc[Uindex,d]
+      
+      # matM to predict at
+      matMz0m0.test = t(cbind(z0, M0_mc, X.test))
+      matMz1m0.test = t(cbind(z1, M0_mc, X.test))
+      matMz1m1.test = t(cbind(z1, M1_mc, X.test))
+      
+      # Define POST function for continuous Y using BB
+      Yz0m0res = .Call("cprBART", tmpY$treedraws, matMz0m0.test, mc.cores)$yhat.test + tmpY$offset
+      Yz1m0res = .Call("cprBART", tmpY$treedraws, matMz1m0.test, mc.cores)$yhat.test + tmpY$offset
+      Yz1m1res = .Call("cprBART", tmpY$treedraws, matMz1m1.test, mc.cores)$yhat.test + tmpY$offset
+      if(objectY$type == "continuous"){
+        # Yz0m0.mc[d,] = Yz0m0res
+        # Yz1m0.mc[d,] = Yz1m0res
+        # Yz1m1.mc[d,] = Yz1m1res
+        Yz0m0.mc[d,] = rnorm(N, Yz0m0res, Ysigest[d])
+        Yz1m0.mc[d,] = rnorm(N, Yz1m0res, Ysigest[d])
+        Yz1m1.mc[d,] = rnorm(N, Yz1m1res, Ysigest[d])
+      } else if(objectY$type == "binary"){
+        Yz0m0res = pnorm(Yz0m0res)
+        Yz1m0res = pnorm(Yz1m0res)
+        Yz1m1res = pnorm(Yz1m1res)
+        Yz0m0.mc[d,] = rbinom(N, 1, pnorm(Yz0m0res))
+        Yz1m0.mc[d,] = rbinom(N, 1, pnorm(Yz1m0res))
+        Yz1m1.mc[d,] = rbinom(N, 1, pnorm(Yz1m1res))
+      } else if(objectY$type == "multinomial"){
+        #
+      }
+    }
+  } else if (class(objectY) == "rBART"){
+    n_MCMC = nrow(objectY$y.draw)
+    
+    # random effects
+    reff = objectY$u.draw
+    
+    # sigest
+    Ysigest = objectY$sigma
+    
+    # Predict Y
+    tmpY = objectY
+    treetmp1 = tmpY$treedraws$trees
+    treetmp2 = gsub(",", " ", treetmp1)
+    treetmp3 = strsplit(treetmp1, ",")[[1]]
+    treetmp4 = paste("1",treetmp3[2],treetmp3[3],treetmp3[4])
+    
+    Yz0m0.mc = matrix(nrow=n_MCMC, ncol=N)
+    Yz1m0.mc = matrix(nrow=n_MCMC, ncol=N)
+    Yz1m1.mc = matrix(nrow=n_MCMC, ncol=N)
+    for (d in 1:n_MCMC) {
+      # d = 1
+      index = 4 + d
+      treetmp5 = paste(treetmp4, treetmp3[index])
+      tmpY$treedraws$trees = treetmp5
+      
+      M0_mc = Mj0_mc[Uindex,d]
+      M1_mc = Mj1_mc[Uindex,d]
+      
+      # matM to predict at
+      matMz0m0.test = t(cbind(z0, M0_mc, X.test))
+      matMz1m0.test = t(cbind(z1, M0_mc, X.test))
+      matMz1m1.test = t(cbind(z1, M1_mc, X.test))
+      
+      # Define POST function for continuous Y using BB
+      Yz0m0res = .Call("cprBART", tmpY$treedraws, matMz0m0.test, mc.cores)$yhat.test + tmpY$offset
+      Yz1m0res = .Call("cprBART", tmpY$treedraws, matMz1m0.test, mc.cores)$yhat.test + tmpY$offset
+      Yz1m1res = .Call("cprBART", tmpY$treedraws, matMz1m1.test, mc.cores)$yhat.test + tmpY$offset
+      for (j in 1:J) {
+        whichUindex = which(Uindex==j)
+        if(length(whichUindex)>0){
+          reff_tmp = reff[d,j]
+          Yz0m0res[,whichUindex] = Yz0m0res[,whichUindex] + reff_tmp
+          Yz1m0res[,whichUindex] = Yz1m0res[,whichUindex] + reff_tmp
+          Yz1m1res[,whichUindex] = Yz1m1res[,whichUindex] + reff_tmp
+        }
+      }
+      if(objectY$type == "continuous"){
+        # Yz0m0.mc[d,] = Yz0m0res
+        # Yz1m0.mc[d,] = Yz1m0res
+        # Yz1m1.mc[d,] = Yz1m1res
+        Yz0m0.mc[d,] = rnorm(N, Yz0m0res, Ysigest[d])
+        Yz1m0.mc[d,] = rnorm(N, Yz1m0res, Ysigest[d])
+        Yz1m1.mc[d,] = rnorm(N, Yz1m1res, Ysigest[d])
+      } else if(objectY$type == "binary"){
+        Yz0m0res = pnorm(Yz0m0res)
+        Yz1m0res = pnorm(Yz1m0res)
+        Yz1m1res = pnorm(Yz1m1res)
+        Yz0m0.mc[d,] = rbinom(N, 1, pnorm(Yz0m0res))
+        Yz1m0.mc[d,] = rbinom(N, 1, pnorm(Yz1m0res))
+        Yz1m1.mc[d,] = rbinom(N, 1, pnorm(Yz1m1res))
+      } else if(objectY$type == "multinomial"){
+        #
+      }
+    }
+  }
+  
+  # -----------------------------------------------------------------------
+  # Define interation check
+  iter_check = floor(n_MCMC/10)
+  
+  # Causal Effects
+  E_Y_z0m0 = numeric(n_MCMC)
+  E_Y_z1m0 = numeric(n_MCMC)
+  E_Y_z1m1 = numeric(n_MCMC)
+  for (post_reps in 1:n_MCMC) {
+    Yhat_z0m0_mc = Yz0m0.mc[post_reps,]
+    Yhat_z1m0_mc = Yz1m0.mc[post_reps,]
+    Yhat_z1m1_mc = Yz1m1.mc[post_reps,]
+    
+    # Update culster-level confounders parameters
+    # Update individual&culster-level confounders parameters
+    piPars = sapply(1:J, function(l) c(rdirichlet_cpp(1,rep(1,a_pi[l]))))
+    rhoPars = c(rdirichlet_cpp(1,a_rho))
+    rhopiPars = unlist(sapply(1:J, function(l) rhoPars[l]*piPars[[l]]))
+    
+    E_Y_z0m0_mc = sum(rhopiPars * Yhat_z0m0_mc)
+    E_Y_z1m0_mc = sum(rhopiPars * Yhat_z1m0_mc)
+    E_Y_z1m1_mc = sum(rhopiPars * Yhat_z1m1_mc)
+    
+    # Causal Effects
+    E_Y_z0m0[post_reps] = mean(E_Y_z0m0_mc)
+    E_Y_z1m0[post_reps] = mean(E_Y_z1m0_mc)
+    E_Y_z1m1[post_reps] = mean(E_Y_z1m1_mc)
+    
+    if (post_reps %% iter_check == 0){
+      cat("Post-Processing",post_reps,"(",(post_reps/n_MCMC)*100,"%)","Time:",date(),"\n")
+    }
+  }
+  
+  NIE = E_Y_z1m1 - E_Y_z1m0
+  NDE = E_Y_z1m0 - E_Y_z0m0
+  ATE = E_Y_z1m1 - E_Y_z0m0
+  
+  # Calculate median of posterior for NIE, NDE, and ATE
+  NIE_result_mc = POSTsummary(NIE, esttype, quantile_alpha)
+  NDE_result_mc = POSTsummary(NDE, esttype, quantile_alpha)
+  ATE_result_mc = POSTsummary(ATE, esttype, quantile_alpha)
+  NIE_result_mc
+  NDE_result_mc
+  ATE_result_mc
+  
+  if (saveall) {
+    POSTresult = list(NIE_result_mc = NIE_result_mc,
+                      NDE_result_mc = NDE_result_mc,
+                      ATE_result_mc = ATE_result_mc,
+                      NIE = NIE, NDE = NDE, ATE = ATE)
+  } else {
+    POSTresult = list(NIE_result_mc = NIE_result_mc,
+                      NDE_result_mc = NDE_result_mc,
+                      ATE_result_mc = ATE_result_mc)
+  }
+  
+  return(POSTresult)
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# -----------------------------------------------------------------------------
+HBBmediationPOST = function(objectY, # object from rBART
+                            objectM, # object from BART
+                            C.test,	 # matrix C to predict at
+                            V.test,	 # matrix V to predict at
+                            Cj.test, # matrix Cj to predict at
+                            Vj.test, # matrix Vj to predict at
+                            Uindex,
+                            esttype = "mean",
+                            saveall = FALSE,
+                            CE = TRUE){
+  # objectY = BARTfitY
+  # objectM = BARTfitM
+  # C.test = C
+  # V.test = V
+  # Cj.test = Cj
+  # Vj.test = Vj
+  # Uindex = Uindex
+  
+  # 
+  mc.cores = 1
+  
+  # Significance Level alpha
+  level = 0.05
+  
+  #
+  z0 = 0
+  z1 = 1
+  
+  # Constants
+  N = nrow(C.test)
+  J = length(unique(Uindex))
+  n_MCMC = nrow(objectY$u.draw)
+  n_j = as.numeric(table(Uindex))
+  
+  # matX to predict at
+  X.test = cbind(C.test, V.test)
+  Xj.test = cbind(Cj.test, Vj.test)
+  matXjz0.test = cbind(z0, Xj.test)
+  matXjz1.test = cbind(z1, Xj.test)
+  
+  # Parameters for cluster-level confounder
+  a_rho = rep(1,J)
+  
+  # Parameters for individual-level confounder
+  a_pi = rep(1,N)
+  
+  # Parameters for alpha (concentration parameter)
+  tau_ome = 1 # HBB
+  alpha_ome = (N/n_j)*tau_ome
+  
+  # Define POST function for continuous M using BB
+  objectM$treedraws$trees = gsub(",", " ", objectM$treedraws$trees)
+  Mj0_mc = predict(objectM, matXjz0.test)
+  Mj1_mc = predict(objectM, matXjz1.test)
+  
+  # random effects
+  reff = objectY$u.draw
+  
+  # sigest
+  Ysigest = objectY$sigma
+  
+  # # 
+  # M0_mc = c(sapply(1:n_MCMC, function(d) sapply(1:N, function(n) Mj0_mc[d,Uindex[n]])))
+  # M1_mc = c(sapply(1:n_MCMC, function(d) sapply(1:N, function(n) Mj1_mc[d,Uindex[n]])))
+  # 
+  # # Predict Y
+  # tmpY = objectY
+  # tmpY$treedraws$trees = gsub(",", " ", tmpY$treedraws$trees)
+  # X.testMC = kronecker(rep(1,n_MCMC), X.test)
+  # UindexMC = kronecker(rep(1,n_MCMC), Uindex)
+  # matMz0m0.test = cbind(z0, M0_mc, X.testMC)
+  # matMz1m0.test = cbind(z1, M0_mc, X.testMC)
+  # matMz1m1.test = cbind(z1, M1_mc, X.testMC)
+  # Yz0m0.mc = predict(tmpY, matMz0m0.test, UindexMC)
+  # Yz1m0.mc = predict(tmpY, matMz1m0.test, UindexMC)
+  # Yz1m1.mc = predict(tmpY, matMz1m1.test, UindexMC)
+  # 
+  # # Define interation check
+  # iter_check = floor(n_MCMC/10)
+  # 
+  # # Causal Effects
+  # E_Y_z0m0 = numeric(n_MCMC)
+  # E_Y_z1m0 = numeric(n_MCMC)
+  # E_Y_z1m1 = numeric(n_MCMC)
+  # for (post_reps in 1:n_MCMC) {
+  #   Yhat_z0m0_mc = Yz0m0.mc[post_reps,]
+  #   Yhat_z1m0_mc = Yz1m0.mc[post_reps,]
+  #   Yhat_z1m1_mc = Yz1m1.mc[post_reps,]
+  # 
+  #   # Update culster-level confounders parameters
+  #   # Update individual-level confounders parameters
+  #   # Update the parameters for individual-level confounders given culster-level confounders
+  #   VrhoPars = c(rdirichlet_cpp(1,a_rho))
+  #   CpiPars = c(rdirichlet_cpp(1,a_pi))
+  #   CpiJPars = sapply(1:J, function(j) rdirichlet_cpp(1,(alpha_ome[j] * CpiPars + (Uindex==j))))
+  #   CpiJParsMC = kronecker(rep(1,n_MCMC), CpiJPars)
+  # 
+  #   E_Y_z0m0_mc = sum(VrhoPars * apply(CpiJParsMC * Yhat_z0m0_mc, 2, sum))/n_MCMC
+  #   E_Y_z1m0_mc = sum(VrhoPars * apply(CpiJParsMC * Yhat_z1m0_mc, 2, sum))/n_MCMC
+  #   E_Y_z1m1_mc = sum(VrhoPars * apply(CpiJParsMC * Yhat_z1m1_mc, 2, sum))/n_MCMC
+  # 
+  #   # Causal Effects
+  #   E_Y_z0m0[post_reps] = mean(E_Y_z0m0_mc)
+  #   E_Y_z1m0[post_reps] = mean(E_Y_z1m0_mc)
+  #   E_Y_z1m1[post_reps] = mean(E_Y_z1m1_mc)
+  # 
+  #   if (post_reps %% iter_check == 0){
+  #     cat("Post-Processing",post_reps,"(",(post_reps/n_MCMC)*100,"%)","Time:",date(),"\n")
+  #   }
+  # }
+  
+  {
+    # Predict Y
+    tmpY = objectY
+    treetmp1 = tmpY$treedraws$trees
+    treetmp2 = gsub(",", " ", treetmp1)
+    treetmp3 = strsplit(treetmp1, ",")[[1]]
+    treetmp4 = paste("1",treetmp3[2],treetmp3[3],treetmp3[4])
+    
+    Yz0m0.mc = matrix(nrow=n_MCMC, ncol=N)
+    Yz1m0.mc = matrix(nrow=n_MCMC, ncol=N)
+    Yz1m1.mc = matrix(nrow=n_MCMC, ncol=N)
+    for (d in 1:n_MCMC) {
+      # d = 1
+      index = 4 + d
+      treetmp5 = paste(treetmp4, treetmp3[index])
+      tmpY$treedraws$trees = treetmp5
+      
+      M0_mc = sapply(1:N, function(n) Mj0_mc[d,Uindex[n]])
+      M1_mc = sapply(1:N, function(n) Mj1_mc[d,Uindex[n]])
+      
+      # matM to predict at
+      matMz0m0.test = t(cbind(z0, M0_mc, X.test))
+      matMz1m0.test = t(cbind(z1, M0_mc, X.test))
+      matMz1m1.test = t(cbind(z1, M1_mc, X.test))
+      
+      # Define POST function for continuous Y using BB
+      Yz0m0res = .Call("cprBART", tmpY$treedraws, matMz0m0.test, mc.cores)$yhat.test + tmpY$offset
+      Yz1m0res = .Call("cprBART", tmpY$treedraws, matMz1m0.test, mc.cores)$yhat.test + tmpY$offset
+      Yz1m1res = .Call("cprBART", tmpY$treedraws, matMz1m1.test, mc.cores)$yhat.test + tmpY$offset
+      for (j in 1:J) {
+        whichUindex = which(Uindex==j)
+        if(length(whichUindex)>0){
+          reff_tmp = reff[d,j]
+          Yz0m0res[,whichUindex] = Yz0m0res[,whichUindex] + reff_tmp
+          Yz1m0res[,whichUindex] = Yz1m0res[,whichUindex] + reff_tmp
+          Yz1m1res[,whichUindex] = Yz1m1res[,whichUindex] + reff_tmp
+        }
+      }
+      if(objectY$type == "continuous"){
+        # Yz0m0.mc[d,] = Yz0m0res
+        # Yz1m0.mc[d,] = Yz1m0res
+        # Yz1m1.mc[d,] = Yz1m1res
+        Yz0m0.mc[d,] = rnorm(N, Yz0m0res, Ysigest[d])
+        Yz1m0.mc[d,] = rnorm(N, Yz1m0res, Ysigest[d])
+        Yz1m1.mc[d,] = rnorm(N, Yz1m1res, Ysigest[d])
+      } else if(objectY$type == "binary"){
+        Yz0m0res = pnorm(Yz0m0res)
+        Yz1m0res = pnorm(Yz1m0res)
+        Yz1m1res = pnorm(Yz1m1res)
+        Yz0m0.mc[d,] = rbinom(N, 1, pnorm(Yz0m0res))
+        Yz1m0.mc[d,] = rbinom(N, 1, pnorm(Yz1m0res))
+        Yz1m1.mc[d,] = rbinom(N, 1, pnorm(Yz1m1res))
+      } else if(objectY$type == "multinomial"){
+        #
+      }
+    }
+    
+    # Define interation check
+    iter_check = floor(n_MCMC/10)
+    
+    # Causal Effects
+    E_Y_z0m0 = numeric(n_MCMC)
+    E_Y_z1m0 = numeric(n_MCMC)
+    E_Y_z1m1 = numeric(n_MCMC)
+    for (post_reps in 1:n_MCMC) {
+      Yhat_z0m0_mc = Yz0m0.mc[post_reps,]
+      Yhat_z1m0_mc = Yz1m0.mc[post_reps,]
+      Yhat_z1m1_mc = Yz1m1.mc[post_reps,]
+      
+      # Update culster-level confounders parameters
+      # Update individual-level confounders parameters
+      # Update the parameters for individual-level confounders given culster-level confounders
+      VrhoPars = c(rdirichlet_cpp(1,a_rho))
+      CpiPars = c(rdirichlet_cpp(1,a_pi))
+      CpiJPars = sapply(1:J, function(j) rdirichlet_cpp(1,(alpha_ome[j] * CpiPars + (Uindex==j))))
+      
+      E_Y_z0m0_mc = sum(VrhoPars * apply(CpiJPars * Yhat_z0m0_mc, 2, sum))
+      E_Y_z1m0_mc = sum(VrhoPars * apply(CpiJPars * Yhat_z1m0_mc, 2, sum))
+      E_Y_z1m1_mc = sum(VrhoPars * apply(CpiJPars * Yhat_z1m1_mc, 2, sum))
+      
+      # Causal Effects
+      E_Y_z0m0[post_reps] = mean(E_Y_z0m0_mc)
+      E_Y_z1m0[post_reps] = mean(E_Y_z1m0_mc)
+      E_Y_z1m1[post_reps] = mean(E_Y_z1m1_mc)
+      
+      if (post_reps %% iter_check == 0){
+        cat("Post-Processing",post_reps,"(",(post_reps/n_MCMC)*100,"%)","Time:",date(),"\n")
+      }
+    }
+  }
+  
+  if (CE) {
+    NIE = E_Y_z1m1 - E_Y_z1m0
+    NDE = E_Y_z1m0 - E_Y_z0m0
+    ATE = E_Y_z1m1 - E_Y_z0m0
+  } else {
+    NIE = E_Y_z1m1
+    NDE = E_Y_z1m0
+    ATE = E_Y_z0m0
+  }
+  
+  # # Estimates: mean or median
+  # if (esttype == "median"){
+  #   NIE_est_mc = median(NIE)
+  #   NDE_est_mc = median(NDE)
+  #   ATE_est_mc = median(ATE)
+  # } else {
+  #   NIE_est_mc = mean(NIE)
+  #   NDE_est_mc = mean(NDE)
+  #   ATE_est_mc = mean(ATE)
+  # }
+  
+  quantile_alpha = c(level/2,1-level/2)
+  
+  # Calculate median of posterior for NIE, NDE, and ATE
+  NIE_result_mc = POSTsummary(NIE, esttype, quantile_alpha)
+  NDE_result_mc = POSTsummary(NDE, esttype, quantile_alpha)
+  ATE_result_mc = POSTsummary(ATE, esttype, quantile_alpha)
+  NIE_result_mc
+  NDE_result_mc
+  ATE_result_mc
+  
+  if (saveall) {
+    POSTresult = list(NIE_result_mc = NIE_result_mc,
+                      NDE_result_mc = NDE_result_mc,
+                      ATE_result_mc = ATE_result_mc,
+                      NIE = NIE, NDE = NDE, ATE = ATE)
+  } else {
+    POSTresult = list(NIE_result_mc = NIE_result_mc,
+                      NDE_result_mc = NDE_result_mc,
+                      ATE_result_mc = ATE_result_mc)
+  }
+  
+  return(POSTresult)
+}
+
+# -----------------------------------------------------------------------------
+TSBBmediationPOST = function(objectY, # object from rBART
+                             objectM, # object from BART
+                             C.test,	# matrix C to predict at
+                             V.test,	# matrix V to predict at
+                             Cj.test,	# matrix Cj to predict at
+                             Vj.test,	# matrix Vj to predict at
+                             Uindex,
+                             esttype = "mean",
+                             saveall = FALSE, 
+                             chi = 1, zeta = 0.5,
+                             CE = TRUE){
+  # objectY = BARTfitY
+  # objectM = BARTfitM
+  # C.test = Cmat
+  # V.test = Vmat
+  # Cj.test = Cjmat
+  # Vj.test = Vjmat
+  # Uindex = Uindex
+  
+  # a constant to scale the desired rate of decay
+  # chi = 1
+  # a constant ratio of cluster-level confounders and individual-level confounders
+  # zeta = 0.5
+  
+  # 
+  mc.cores = 1
+  
+  # Significance Level alpha
+  level = 0.05
+  
+  # 
+  z0 = 0
+  z1 = 1
+  
+  N = nrow(C.test)
+  J = length(unique(Uindex))
+  n_MCMC = nrow(objectY$u.draw)
+  n_j = as.numeric(table(Uindex))
+  p.test = ncol(C.test) + ncol(V.test)
+  NJ = N * J
+  JJ = J^{2}
+  
+  UindexTSBB = numeric(NJ)
+  Xj.test = cbind(Cj.test, Vj.test)
+  X.testTSBB = matrix(nrow = NJ, ncol = p.test)
+  Xj.testTSBB = matrix(nrow = JJ, ncol = p.test)
+  for (l in 1:J) {
+    ind_Uindex_l = which(Uindex == l)
+    V_lunique = V.test[ind_Uindex_l[1],]
+    Xtemp = matrix(nrow = N, ncol = p.test)
+    for (j in 1:J) {
+      ind_Uindex_j = which(Uindex == j)
+      num_Uindex_j = length(ind_Uindex_j)
+      C_j = matrix(C.test[ind_Uindex_j,], nrow = num_Uindex_j)
+      V_l = matrix(rep(V_lunique,num_Uindex_j), nrow = num_Uindex_j, byrow = T)
+      Xtemp[ind_Uindex_j,] = cbind(C_j, V_l)
+    }
+    # UindexTSBB[((N*(l-1)+1):(N*l))] = l
+    X.testTSBB[((N*(l-1)+1):(N*l)),] = Xtemp
+    Xj.testTSBB[((J*(l-1)+1):(J*l)),] = Xj.test
+  }
+  UindexTSBB = rep(1:J, each=N)
+  
+  # matXz0.testTSBB = cbind(z0, X.testTSBB)
+  # matXz1.testTSBB = cbind(z1, X.testTSBB)
+  matXjz0.testTSBB = cbind(z0, Xj.testTSBB)
+  matXjz1.testTSBB = cbind(z1, Xj.testTSBB)
+  
+  # Parameters for cluster-level confounder
+  a_rho = rep(1,J)
+  
+  # Define POST function for continuous Y and binary M using TSBB
+  # Distances
+  # \lambda_{lj}^{\oemga} = \alpha_{l}^{\oemga} \dist_{lj}: adding additional "pseudosubjects
+  tau_ome = 1 # J # 100 # TSBB
+  # alpha_ome = rep(tau_ome,J)
+  # alpha_ome = (n_j/N) * tau_ome
+  # alpha_ome = n_j * tau_ome
+  # alpha_ome = (1/n_j) * tau_ome
+  alpha_ome = (N/n_j) * tau_ome
+  
+  # j (row) times l (column)
+  Vxi_dist = matrix_dist(scale(V.test),Uindex)
+  Cxi_dist = matrix_dist(scale(C.test),Uindex)
+  xi_dist = exp(-((zeta)*Vxi_dist + (1-zeta)*Cxi_dist)/chi)
+  xi_distPOST = sapply(1:J, function(l) alpha_ome[l]*xi_dist[,l]) + diag(J)
+  
+  # Define POST function for continuous M using BB
+  objectM$treedraws$trees = gsub(",", " ", objectM$treedraws$trees)
+  Mj0_mc = predict(objectM, matXjz0.testTSBB)
+  Mj1_mc = predict(objectM, matXjz1.testTSBB)
+  
+  # random effects
+  reff = objectY$u.draw
+  
+  # sigest
+  Ysigest = objectY$sigma
+  
+  # # 
+  # M0_mc = c(sapply(1:n_MCMC, function(d) sapply(1:N, function(n) Mj0_mc[d,Uindex[n]])))
+  # M1_mc = c(sapply(1:n_MCMC, function(d) sapply(1:N, function(n) Mj1_mc[d,Uindex[n]])))
+  # 
+  # # Predict Y
+  # tmpY = objectY
+  # tmpY$treedraws$trees = gsub(",", " ", tmpY$treedraws$trees)
+  # X.testTSBBMC = kronecker(rep(1,n_MCMC), X.testTSBB)
+  # UindexTSBBMC = kronecker(rep(1,n_MCMC), UindexTSBB)
+  # matMz0m0.test = cbind(z0, M0_mc, X.testTSBBMC)
+  # matMz1m0.test = cbind(z1, M0_mc, X.testTSBBMC)
+  # matMz1m1.test = cbind(z1, M1_mc, X.testTSBBMC)
+  # Yz0m0.mc = predict(tmpY, matMz0m0.test, UindexTSBBMC)
+  # Yz1m0.mc = predict(tmpY, matMz1m0.test, UindexTSBBMC)
+  # Yz1m1.mc = predict(tmpY, matMz1m1.test, UindexTSBBMC)
+  # 
+  # # Define interation check
+  # iter_check = floor(n_MCMC/10)
+  # 
+  # # Causal Effects
+  # E_Y_z0m0 = numeric(n_MCMC)
+  # E_Y_z1m0 = numeric(n_MCMC)
+  # E_Y_z1m1 = numeric(n_MCMC)
+  # for (post_reps in 1:n_MCMC) {
+  #   Yhat_z0m0_mc = Yz0m0.mc[post_reps,]
+  #   Yhat_z1m0_mc = Yz1m0.mc[post_reps,]
+  #   Yhat_z1m1_mc = Yz1m1.mc[post_reps,]
+  # 
+  #   # ------------------------------------------------------------------------------
+  #   # Update parameters for cluster-level confounder (rho: J X 1 vector)
+  #   # Update parameters for individual-level confounder (pi: n_j X 1 matrix, j=1,...J)
+  #   # Update parameters for link cluster-individual (omega: J X J matrix)
+  #   rhoPars = c(rdirichlet_cpp(1,rep(1,J)))
+  #   piPars = sapply(1:J, function(l) rdirichlet_cpp(1, rep(1,n_j[l])))
+  #   omePars = sapply(1:J, function(l) rdirichlet_cpp(1, xi_distPOST[,l]))
+  # 
+  #   RhoOmegaPi = numeric(NJ)
+  #   for (l in 1:J) {
+  #     RhoOmegaPitemp = numeric(N)
+  #     for (j in 1:J) {
+  #       ind_Uindex_j = which(Uindex == j)
+  #       RhoOmegaPitemp[ind_Uindex_j] = omePars[j,l]*c(piPars[[j]])
+  #     }
+  #     RhoOmegaPi[((N*(l-1)+1):(N*l))] = rhoPars[l]*RhoOmegaPitemp
+  #   }
+  #   RhoOmegaPiMC = kronecker(rep(1,n_MCMC), RhoOmegaPi)
+  # 
+  #   E_Y_z0m0_mc = sum(RhoOmegaPiMC * Yhat_z0m0_mc)/sum(RhoOmegaPiMC)
+  #   E_Y_z1m0_mc = sum(RhoOmegaPiMC * Yhat_z1m0_mc)/sum(RhoOmegaPiMC)
+  #   E_Y_z1m1_mc = sum(RhoOmegaPiMC * Yhat_z1m1_mc)/sum(RhoOmegaPiMC)
+  # 
+  #   # Causal Effects
+  #   E_Y_z0m0[post_reps] = mean(E_Y_z0m0_mc)
+  #   E_Y_z1m0[post_reps] = mean(E_Y_z1m0_mc)
+  #   E_Y_z1m1[post_reps] = mean(E_Y_z1m1_mc)
+  # 
+  #   if (post_reps %% iter_check == 0){
+  #     cat("Post-Processing",post_reps,"(",(post_reps/n_MCMC)*100,"%)","Time:",date(),"\n")
+  #   }
+  # }
+  
+  {
+    # Predict Y
+    tmpY = objectY
+    treetmp1 = tmpY$treedraws$trees
+    treetmp2 = gsub(",", " ", treetmp1)
+    treetmp3 = strsplit(treetmp1, ",")[[1]]
+    treetmp4 = paste("1",treetmp3[2],treetmp3[3],treetmp3[4])
+    
+    # Define interation check
+    iter_check = floor(n_MCMC/10)
+    
+    # Causal Effects
+    E_Y_z0m0 = numeric(n_MCMC)
+    E_Y_z1m0 = numeric(n_MCMC)
+    E_Y_z1m1 = numeric(n_MCMC)
+    for (post_reps in 1:n_MCMC) {
+      # post_reps = 1
+      index = 4 + post_reps
+      treetmp5 = paste(treetmp4, treetmp3[index])
+      tmpY$treedraws$trees = treetmp5
+      
+      M0_mc = numeric(NJ)
+      M1_mc = numeric(NJ)
+      Mj0_tmp = Mj0_mc[post_reps,]
+      Mj1_tmp = Mj1_mc[post_reps,]
+      for (j in 1:JJ) {
+        tmp = which(UindexTSBB==j)
+        M0_mc[tmp] = Mj0_tmp[j]
+        M1_mc[tmp] = Mj1_tmp[j]
+      }
+      
+      # matM to predict at
+      matMz0m0.testTSBB = t(cbind(z0, M0_mc, X.testTSBB))
+      matMz1m0.testTSBB = t(cbind(z1, M0_mc, X.testTSBB))
+      matMz1m1.testTSBB = t(cbind(z1, M1_mc, X.testTSBB))
+      
+      # Define POST function for continuous Y using BB
+      Yz0m0res = c(.Call("cprBART", tmpY$treedraws, matMz0m0.testTSBB, mc.cores)$yhat.test + tmpY$offset)
+      # print("Yz0m0res")
+      Yz1m0res = c(.Call("cprBART", tmpY$treedraws, matMz1m0.testTSBB, mc.cores)$yhat.test + tmpY$offset)
+      # print("Yz1m0res")
+      Yz1m1res = c(.Call("cprBART", tmpY$treedraws, matMz1m1.testTSBB, mc.cores)$yhat.test + tmpY$offset)
+      # print("Yz1m1res")
+      for (j in 1:J) {
+        whichUindex = which(UindexTSBB==j)
+        if(length(whichUindex)>0){
+          reff_tmp = reff[post_reps,j]
+          Yz0m0res[whichUindex] = Yz0m0res[whichUindex] + reff_tmp
+          Yz1m0res[whichUindex] = Yz1m0res[whichUindex] + reff_tmp
+          Yz1m1res[whichUindex] = Yz1m1res[whichUindex] + reff_tmp
+        }
+      }
+      if(objectY$type == "continuous"){
+        # Yz0m0.mc = Yz0m0res
+        # Yz1m0.mc = Yz1m0res
+        # Yz1m1.mc = Yz1m1res
+        Yz0m0.mc = rnorm(NJ, Yz0m0res, Ysigest[post_reps])
+        Yz1m0.mc = rnorm(NJ, Yz1m0res, Ysigest[post_reps])
+        Yz1m1.mc = rnorm(NJ, Yz1m1res, Ysigest[post_reps])
+      } else if(objectY$type == "binary"){
+        Yz0m0res = pnorm(Yz0m0res)
+        Yz1m0res = pnorm(Yz1m0res)
+        Yz1m1res = pnorm(Yz1m1res)
+        Yz0m0.mc = rbinom(NJ, 1, pnorm(Yz0m0res))
+        Yz1m0.mc = rbinom(NJ, 1, pnorm(Yz1m0res))
+        Yz1m1.mc = rbinom(NJ, 1, pnorm(Yz1m1res))
+      } else if(objectY$type == "multinomial"){
+        #
+      }
+      
+      Yhat_z0m0_mc = Yz0m0.mc
+      Yhat_z1m0_mc = Yz1m0.mc
+      Yhat_z1m1_mc = Yz1m1.mc
+      
+      # ------------------------------------------------------------------------------
+      # Update parameters for cluster-level confounder (rho: J X 1 vector)
+      # Update parameters for individual-level confounder (pi: n_j X 1 matrix, j=1,...J)
+      # Update parameters for link cluster-individual (omega: J X J matrix)
+      rhoPars = c(rdirichlet_cpp(1,rep(1,J)))
+      piPars = sapply(1:J, function(l) rdirichlet_cpp(1, rep(1,n_j[l])))
+      omePars = sapply(1:J, function(l) rdirichlet_cpp(1, xi_distPOST[,l]))
+      
+      RhoOmegaPi = numeric(NJ)
+      for (l in 1:J) {
+        RhoOmegaPitemp = numeric(N)
+        for (j in 1:J) {
+          ind_Uindex_j = which(Uindex == j)
+          RhoOmegaPitemp[ind_Uindex_j] = omePars[j,l]*c(piPars[[j]])
+        }
+        RhoOmegaPi[((N*(l-1)+1):(N*l))] = rhoPars[l]*RhoOmegaPitemp
+      }
+      
+      E_Y_z0m0_mc = sum(RhoOmegaPi * Yhat_z0m0_mc)/sum(RhoOmegaPi)
+      E_Y_z1m0_mc = sum(RhoOmegaPi * Yhat_z1m0_mc)/sum(RhoOmegaPi)
+      E_Y_z1m1_mc = sum(RhoOmegaPi * Yhat_z1m1_mc)/sum(RhoOmegaPi)
+      
+      # Causal Effects
+      E_Y_z0m0[post_reps] = mean(E_Y_z0m0_mc)
+      E_Y_z1m0[post_reps] = mean(E_Y_z1m0_mc)
+      E_Y_z1m1[post_reps] = mean(E_Y_z1m1_mc)
+      
+      if (post_reps %% iter_check == 0){
+        cat("Post-Processing",post_reps,"(",(post_reps/n_MCMC)*100,"%)","Time:",date(),"\n")
+      }
+    }
+  }
+  
+  if (CE) {
+    NIE = E_Y_z1m1 - E_Y_z1m0
+    NDE = E_Y_z1m0 - E_Y_z0m0
+    ATE = E_Y_z1m1 - E_Y_z0m0
+  } else {
+    NIE = E_Y_z1m1
+    NDE = E_Y_z1m0
+    ATE = E_Y_z0m0
+  }
+  
+  # # Estimates: mean or median
+  # if (esttype == "median"){
+  #   NIE_est_mc = median(NIE)
+  #   NDE_est_mc = median(NDE)
+  #   ATE_est_mc = median(ATE)
+  # } else {
+  #   NIE_est_mc = mean(NIE)
+  #   NDE_est_mc = mean(NDE)
+  #   ATE_est_mc = mean(ATE)
+  # }
+  
+  quantile_alpha = c(level/2,1-level/2)
+  
+  # Calculate median of posterior for NIE, NDE, and ATE
+  NIE_result_mc = POSTsummary(NIE, esttype, quantile_alpha)
+  NDE_result_mc = POSTsummary(NDE, esttype, quantile_alpha)
+  ATE_result_mc = POSTsummary(ATE, esttype, quantile_alpha)
+  NIE_result_mc
+  NDE_result_mc
+  ATE_result_mc
+  
+  if (saveall) {
+    POSTresult = list(NIE_result_mc = NIE_result_mc,
+                      NDE_result_mc = NDE_result_mc,
+                      ATE_result_mc = ATE_result_mc,
+                      NIE = NIE, NDE = NDE, ATE = ATE)
+  } else {
+    POSTresult = list(NIE_result_mc = NIE_result_mc,
+                      NDE_result_mc = NDE_result_mc,
+                      ATE_result_mc = ATE_result_mc)
+  }
+  
+  return(POSTresult)
+}
+
+
+
